@@ -1,6 +1,6 @@
 {
-  "name": "Gemba Bulgu Girişi",
-  "short_name": "Gemba",
+  "name": "Saueressig_Gemba_Takip",
+  "short_name": "Saueressig_Gemba_Takip",
   "description": "Saha gemba turlarında uygunsuzluk fotoğrafı çekip gönderme uygulaması",
   "start_url": "./gemba.html",
   "scope": "./",
