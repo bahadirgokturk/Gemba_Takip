@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Gemba Bulgu Girişi</title>
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#4C6285">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Gemba">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" href="icons/icon-192.png">
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+  :root{
+    --accent:#4C6285;
+    --accent-dark:#3B4F6B;
+    --bg:#F7F8FA;
+    --surface:#FFFFFF;
+    --text:#1E2530;
+    --text-soft:#5B6472;
+    --success:#2F855A;
+    --border:#E2E5EA;
+    --radius-lg:14px;
+    --radius-sm:10px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+  }
+  .app{
+    width:100%;
+    max-width:480px;
+    min-height:100vh;
+    background:var(--surface);
+    display:flex;
+    flex-direction:column;
+  }
+  header{
+    padding:24px 20px 16px;
+    border-bottom:1px solid var(--border);
+  }
+  header h1{
+    font-size:18px;
+    margin:0 0 12px;
+    font-weight:600;
+  }
+  .progress{
+    display:flex;
+    gap:8px;
+    align-items:center;
+  }
+  .dot{
+    width:10px;
+    height:10px;
+    border-radius:50%;
+    background:var(--border);
+  }
+  .dot.active{background:var(--accent);}
+  .progress-line{
+    flex:1;
+    height:2px;
+    background:var(--border);
+  }
+  main{
+    flex:1;
+    padding:20px;
+    display:flex;
+    flex-direction:column;
+    gap:20px;
+  }
+  label{
+    font-size:14px;
+    font-weight:600;
+    color:var(--text-soft);
+    display:block;
+    margin-bottom:8px;
+  }
+  select{
+    width:100%;
+    padding:14px;
+    font-size:16px;
+    border:1px solid var(--border);
+    border-radius:var(--radius-sm);
+    background:var(--surface);
+    color:var(--text);
+    font-family:inherit;
+  }
+  select:focus{
+    outline:2px solid var(--accent);
+    outline-offset:1px;
+  }
+  button{
+    font-family:inherit;
+    font-size:16px;
+    font-weight:600;
+    padding:16px;
+    border-radius:var(--radius-sm);
+    border:none;
+    cursor:pointer;
+  }
+  .btn-primary{
+    background:var(--accent);
+    color:#fff;
+  }
+  .btn-primary:active{background:var(--accent-dark);}
+  .btn-primary:disabled{
+    background:var(--border);
+    color:var(--text-soft);
+    cursor:not-allowed;
+  }
+  .link-btn{
+    background:none;
+    border:none;
+    color:var(--accent);
+    font-size:14px;
+    font-weight:600;
+    text-align:center;
+    padding:8px;
+    cursor:pointer;
+  }
+  .card{
+    background:var(--bg);
+    border:1px solid var(--border);
+    border-radius:var(--radius-lg);
+    padding:16px;
+  }
+  .preview-img{
+    width:100%;
+    border-radius:var(--radius-lg);
+    display:block;
+    max-height:400px;
+    object-fit:cover;
+  }
+  .hint{
+    font-size:13px;
+    color:var(--text-soft);
+    margin-top:8px;
+  }
+  .error{
+    background:#FFF1E6;
+    color:#B3441E;
+    padding:12px 14px;
+    border-radius:var(--radius-sm);
+    font-size:14px;
+    display:none;
+  }
+  .success-screen{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:16px;
+    padding:20px;
+    text-align:center;
+  }
+  .success-icon{
+    width:64px;
+    height:64px;
+    border-radius:50%;
+    background:#E8F3EC;
+    color:var(--success);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:32px;
+  }
+  .success-screen h2{
+    margin:0;
+    font-size:20px;
+  }
+  .success-screen p{
+    margin:0;
+    color:var(--text-soft);
+    font-size:14px;
+  }
+  .hidden{display:none !important;}
+  .spinner{
+    width:18px;
+    height:18px;
+    border:2px solid rgba(255,255,255,0.4);
+    border-top-color:#fff;
+    border-radius:50%;
+    display:inline-block;
+    animation:spin 0.7s linear infinite;
+    vertical-align:middle;
+    margin-right:8px;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Gemba Bulgu Girişi</h1>
+    <div class="progress">
+      <div class="dot active" id="dot1"></div>
+      <div class="progress-line"></div>
+      <div class="dot" id="dot2"></div>
+    </div>
+  </header>
+
+  <main>
+    <!-- STEP 1 -->
+    <section id="step1">
+      <div>
+        <label for="areaSelect">Bölge</label>
+        <select id="areaSelect">
+          <option value="">Bölge seçin...</option>
+        </select>
+      </div>
+
+      <div>
+        <label for="responsibleSelect">Sorumlu Kişi</label>
+        <select id="responsibleSelect">
+          <option value="">Sorumlu kişi seçin...</option>
+        </select>
+      </div>
+
+      <div class="error" id="step1Error"></div>
+
+      <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden">
+      <button class="btn-primary" id="takePhotoBtn">📷 Fotoğraf Çek</button>
+      <p class="hint">Önce bölge ve sorumlu kişiyi seçin, ardından fotoğraf çekin.</p>
+    </section>
+
+    <!-- STEP 2 -->
+    <section id="step2" class="hidden">
+      <div class="card">
+        <img id="previewImg" class="preview-img" alt="Önizleme">
+      </div>
+
+      <div class="error" id="step2Error"></div>
+
+      <button class="btn-primary" id="submitBtn">Gönder</button>
+      <button class="link-btn" id="retakeBtn">Yeniden çek</button>
+    </section>
+
+    <!-- SUCCESS -->
+    <section id="successScreen" class="success-screen hidden">
+      <div class="success-icon">✓</div>
+      <h2>Kaydedildi</h2>
+      <p>Bulgunuz sisteme iletildi. Yeni bir kayıt için hazırlanıyor...</p>
+    </section>
+  </main>
+</div>
+
+<script>
+// ============ CONFIG ============
+const SUPABASE_URL = 'https://xeettwmxooxtwxzevitk.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_pdU1baOJtG9xNJ0Z5WnRrA_XkKCBEh0';
+// =================================
+
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const areaSelect = document.getElementById('areaSelect');
+const responsibleSelect = document.getElementById('responsibleSelect');
+const step1 = document.getElementById('step1');
+const step2 = document.getElementById('step2');
+const successScreen = document.getElementById('successScreen');
+const dot1 = document.getElementById('dot1');
+const dot2 = document.getElementById('dot2');
+const cameraInput = document.getElementById('cameraInput');
+const takePhotoBtn = document.getElementById('takePhotoBtn');
+const previewImg = document.getElementById('previewImg');
+const submitBtn = document.getElementById('submitBtn');
+const retakeBtn = document.getElementById('retakeBtn');
+const step1Error = document.getElementById('step1Error');
+const step2Error = document.getElementById('step2Error');
+
+let selectedFile = null;
+
+async function loadOptions() {
+  const [areasRes, responsiblesRes] = await Promise.all([
+    supabaseClient.from('gemba_areas').select('name').order('name', { ascending: true }),
+    supabaseClient.from('gemba_responsibles').select('name').order('name', { ascending: true })
+  ]);
+
+  if (areasRes.error || responsiblesRes.error) {
+    showError(step1Error, 'Liste yüklenemedi. Sayfayı yenileyin.');
+    return;
+  }
+
+  areaSelect.innerHTML = '<option value="">Bölge seçin...</option>';
+  (areasRes.data || []).forEach(a => {
+    const opt = document.createElement('option');
+    opt.value = a.name;
+    opt.textContent = a.name;
+    areaSelect.appendChild(opt);
+  });
+
+  responsibleSelect.innerHTML = '<option value="">Sorumlu kişi seçin...</option>';
+  (responsiblesRes.data || []).forEach(r => {
+    const opt = document.createElement('option');
+    opt.value = r.name;
+    opt.textContent = r.name;
+    responsibleSelect.appendChild(opt);
+  });
+}
+
+function showError(el, msg) {
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function hideError(el) {
+  el.style.display = 'none';
+}
+
+takePhotoBtn.addEventListener('click', () => {
+  hideError(step1Error);
+  if (!areaSelect.value) {
+    showError(step1Error, 'Lütfen önce bir bölge seçin.');
+    return;
+  }
+  if (!responsibleSelect.value) {
+    showError(step1Error, 'Lütfen sorumlu kişiyi seçin.');
+    return;
+  }
+  cameraInput.click();
+});
+
+cameraInput.addEventListener('change', () => {
+  const file = cameraInput.files[0];
+  if (!file) return;
+  selectedFile = file;
+  previewImg.src = URL.createObjectURL(file);
+  goToStep2();
+});
+
+function goToStep1() {
+  step1.classList.remove('hidden');
+  step2.classList.add('hidden');
+  successScreen.classList.add('hidden');
+  dot1.classList.add('active');
+  dot2.classList.remove('active');
+  hideError(step1Error);
+}
+
+function goToStep2() {
+  step1.classList.add('hidden');
+  step2.classList.remove('hidden');
+  successScreen.classList.add('hidden');
+  dot1.classList.remove('active');
+  dot2.classList.add('active');
+  hideError(step2Error);
+}
+
+retakeBtn.addEventListener('click', () => {
+  selectedFile = null;
+  cameraInput.value = '';
+  goToStep1();
+});
+
+submitBtn.addEventListener('click', async () => {
+  if (!selectedFile) return;
+  hideError(step2Error);
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = '<span class="spinner"></span>Gönderiliyor...';
+
+  try {
+    const area = areaSelect.value;
+    const responsible = responsibleSelect.value;
+    const ext = (selectedFile.name.split('.').pop() || 'jpg').toLowerCase();
+    const fileName = `${crypto.randomUUID()}.${ext}`;
+
+    const { error: uploadError } = await supabaseClient
+      .storage
+      .from('gemba-photos')
+      .upload(fileName, selectedFile, { contentType: selectedFile.type || 'image/jpeg' });
+
+    if (uploadError) throw uploadError;
+
+    const { data: urlData } = supabaseClient
+      .storage
+      .from('gemba-photos')
+      .getPublicUrl(fileName);
+
+    const { error: insertError } = await supabaseClient
+      .from('gemba_findings')
+      .insert({
+        area: area,
+        responsible: responsible,
+        photo_url: urlData.publicUrl
+      });
+
+    if (insertError) throw insertError;
+
+    showSuccess();
+  } catch (err) {
+    showError(step2Error, 'Gönderim başarısız oldu. Lütfen tekrar deneyin.');
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Gönder';
+  }
+});
+
+function showSuccess() {
+  step1.classList.add('hidden');
+  step2.classList.add('hidden');
+  successScreen.classList.remove('hidden');
+
+  setTimeout(() => {
+    selectedFile = null;
+    cameraInput.value = '';
+    areaSelect.value = '';
+    responsibleSelect.value = '';
+    loadOptions();
+    goToStep1();
+  }, 2500);
+}
+
+loadOptions();
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('service-worker.js').catch(() => {});
+  });
+}
+</script>
+</body>
+</html>
