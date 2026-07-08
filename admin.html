@@ -7,13 +7,13 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
   :root{
-    --accent:#4C6285;
-    --accent-dark:#3B4F6B;
-    --accent-soft:#EEF1F6;
+    --accent:#006AB4;
+    --accent-dark:#005087;
+    --accent-soft:#E7F0F7;
     --bg:#F7F8FA;
     --surface:#FFFFFF;
     --text:#1E2530;
-    --text-soft:#5B6472;
+    --text-soft:#54616C;
     --text-faint:#8892A0;
     --success:#2F855A;
     --success-bg:#E8F3EC;
@@ -22,9 +22,9 @@
     --border:#E2E5EA;
     --radius-lg:14px;
     --radius-sm:10px;
-    --shadow-card:0 1px 2px rgba(30,37,48,0.04), 0 10px 24px -14px rgba(76,98,133,0.28);
-    --shadow-card-hover:0 1px 2px rgba(30,37,48,0.05), 0 16px 32px -14px rgba(76,98,133,0.34);
-    --shadow-btn:0 1px 2px rgba(30,37,48,0.06), 0 6px 16px -8px rgba(76,98,133,0.35);
+    --shadow-card:0 1px 2px rgba(30,37,48,0.04), 0 10px 24px -14px rgba(0,106,180,0.28);
+    --shadow-card-hover:0 1px 2px rgba(30,37,48,0.05), 0 16px 32px -14px rgba(0,106,180,0.34);
+    --shadow-btn:0 1px 2px rgba(30,37,48,0.06), 0 6px 16px -8px rgba(0,106,180,0.35);
   }
   *{box-sizing:border-box;}
   body{
@@ -42,7 +42,7 @@
     justify-content:center;
     padding:20px;
     background:
-      radial-gradient(900px 520px at 50% -10%, rgba(76,98,133,0.10), transparent 60%),
+      radial-gradient(900px 520px at 50% -10%, rgba(0,106,180,0.10), transparent 60%),
       var(--bg);
   }
   .login-card{
@@ -100,13 +100,13 @@
   input:focus, select:focus{
     outline:none;
     border-color:var(--accent);
-    box-shadow:0 0 0 3px rgba(76,98,133,0.16);
+    box-shadow:0 0 0 3px rgba(0,106,180,0.16);
   }
   select{
     appearance:none;
     -webkit-appearance:none;
     padding-right:36px;
-    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%235B6472' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2354616C' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
     background-repeat:no-repeat;
     background-position:right 11px center;
   }
