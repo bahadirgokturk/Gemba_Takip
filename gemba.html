@@ -20,24 +20,35 @@
   :root{
     --accent:#4C6285;
     --accent-dark:#3B4F6B;
+    --accent-soft:#EEF1F6;
     --bg:#F7F8FA;
     --surface:#FFFFFF;
     --text:#1E2530;
     --text-soft:#5B6472;
+    --text-faint:#8892A0;
     --success:#2F855A;
+    --success-bg:#E8F3EC;
+    --warn:#B3441E;
+    --warn-bg:#FFF1E6;
     --border:#E2E5EA;
     --radius-lg:14px;
     --radius-sm:10px;
+    --shadow-card:0 1px 2px rgba(30,37,48,0.04), 0 8px 24px -12px rgba(76,98,133,0.18);
+    --shadow-btn:0 1px 2px rgba(30,37,48,0.06), 0 6px 16px -8px rgba(76,98,133,0.35);
   }
   *{box-sizing:border-box;}
+  html{background:var(--bg);}
   body{
     margin:0;
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    background:var(--bg);
+    background:
+      radial-gradient(720px 420px at 50% -10%, rgba(76,98,133,0.10), transparent 60%),
+      var(--bg);
     color:var(--text);
     min-height:100vh;
     display:flex;
     justify-content:center;
+    -webkit-font-smoothing:antialiased;
   }
   .app{
     width:100%;
@@ -46,15 +57,42 @@
     background:var(--surface);
     display:flex;
     flex-direction:column;
+    box-shadow:var(--shadow-card);
+  }
+  @media (min-width:481px){
+    body{ padding:32px 16px; }
+    .app{
+      min-height:auto;
+      border-radius:20px;
+      overflow:hidden;
+      margin:auto;
+    }
   }
   header{
-    padding:24px 20px 16px;
+    padding:22px 20px 18px;
     border-bottom:1px solid var(--border);
+    display:flex;
+    align-items:center;
+    gap:12px;
+  }
+  .brand-mark{
+    width:34px;
+    height:34px;
+    border-radius:9px;
+    flex:none;
+    display:block;
+    box-shadow:0 1px 2px rgba(30,37,48,0.08);
+  }
+  .header-text{
+    flex:1;
+    min-width:0;
   }
   header h1{
-    font-size:18px;
-    margin:0 0 12px;
+    font-size:16px;
+    line-height:1.3;
+    margin:0 0 10px;
     font-weight:600;
+    letter-spacing:-0.01em;
   }
   .progress{
     display:flex;
@@ -62,44 +100,64 @@
     align-items:center;
   }
   .dot{
-    width:10px;
-    height:10px;
+    width:8px;
+    height:8px;
     border-radius:50%;
     background:var(--border);
+    flex:none;
+    transition:background-color .25s ease, transform .25s ease;
   }
-  .dot.active{background:var(--accent);}
+  .dot.active{
+    background:var(--accent);
+    transform:scale(1.15);
+  }
   .progress-line{
     flex:1;
     height:2px;
     background:var(--border);
+    border-radius:1px;
+    overflow:hidden;
   }
   main{
     flex:1;
-    padding:20px;
+    padding:22px 20px 28px;
     display:flex;
     flex-direction:column;
-    gap:20px;
+    gap:18px;
+  }
+  section{ animation:fadeSlideIn .32s cubic-bezier(.16,1,.3,1) both; }
+  @keyframes fadeSlideIn{
+    from{ opacity:0; transform:translateY(6px); }
+    to{ opacity:1; transform:translateY(0); }
   }
   label{
-    font-size:14px;
+    font-size:13px;
     font-weight:600;
     color:var(--text-soft);
     display:block;
-    margin-bottom:8px;
+    margin-bottom:7px;
+    letter-spacing:.01em;
   }
   select{
     width:100%;
-    padding:14px;
+    padding:13px 40px 13px 14px;
     font-size:16px;
     border:1px solid var(--border);
     border-radius:var(--radius-sm);
-    background:var(--surface);
+    background-color:var(--surface);
     color:var(--text);
     font-family:inherit;
+    appearance:none;
+    -webkit-appearance:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%235B6472' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat:no-repeat;
+    background-position:right 12px center;
+    transition:border-color .15s ease, box-shadow .15s ease;
   }
   select:focus{
-    outline:2px solid var(--accent);
-    outline-offset:1px;
+    outline:none;
+    border-color:var(--accent);
+    box-shadow:0 0 0 3px rgba(76,98,133,0.16);
   }
   button{
     font-family:inherit;
@@ -109,17 +167,32 @@
     border-radius:var(--radius-sm);
     border:none;
     cursor:pointer;
+    transition:transform .12s ease, background-color .15s ease, box-shadow .15s ease, opacity .15s ease;
   }
   .btn-primary{
+    width:100%;
     background:var(--accent);
     color:#fff;
+    box-shadow:var(--shadow-btn);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
   }
-  .btn-primary:active{background:var(--accent-dark);}
+  .btn-primary:hover{background:var(--accent-dark);}
+  .btn-primary:active{
+    background:var(--accent-dark);
+    transform:scale(0.98);
+    box-shadow:none;
+  }
   .btn-primary:disabled{
     background:var(--border);
-    color:var(--text-soft);
+    color:var(--text-faint);
     cursor:not-allowed;
+    box-shadow:none;
+    transform:none;
   }
+  .btn-icon{ flex:none; display:flex; }
   .link-btn{
     background:none;
     border:none;
@@ -130,85 +203,107 @@
     padding:8px;
     cursor:pointer;
   }
+  .link-btn:active{ opacity:.6; }
   .card{
-    background:var(--bg);
+    background:var(--accent-soft);
     border:1px solid var(--border);
     border-radius:var(--radius-lg);
-    padding:16px;
+    padding:10px;
+    box-shadow:var(--shadow-card);
   }
   .preview-img{
     width:100%;
-    border-radius:var(--radius-lg);
+    border-radius:calc(var(--radius-lg) - 4px);
     display:block;
     max-height:400px;
     object-fit:cover;
+    background:var(--border);
   }
   .hint{
     font-size:13px;
-    color:var(--text-soft);
-    margin-top:8px;
+    color:var(--text-faint);
+    margin-top:2px;
+    line-height:1.5;
   }
   .error{
-    background:#FFF1E6;
-    color:#B3441E;
+    background:var(--warn-bg);
+    color:var(--warn);
     padding:12px 14px;
     border-radius:var(--radius-sm);
     font-size:14px;
     display:none;
+    align-items:flex-start;
+    gap:8px;
+    animation:fadeSlideIn .2s ease both;
   }
+  .error svg{ flex:none; margin-top:1px; }
   .success-screen{
     flex:1;
     display:flex;
     flex-direction:column;
     align-items:center;
     justify-content:center;
-    gap:16px;
+    gap:14px;
     padding:20px;
     text-align:center;
   }
   .success-icon{
-    width:64px;
-    height:64px;
+    width:60px;
+    height:60px;
     border-radius:50%;
-    background:#E8F3EC;
+    background:var(--success-bg);
     color:var(--success);
     display:flex;
     align-items:center;
     justify-content:center;
-    font-size:32px;
+    animation:popIn .38s cubic-bezier(.34,1.56,.64,1) both;
+  }
+  @keyframes popIn{
+    from{ opacity:0; transform:scale(.7); }
+    to{ opacity:1; transform:scale(1); }
   }
   .success-screen h2{
     margin:0;
-    font-size:20px;
+    font-size:19px;
+    letter-spacing:-0.01em;
   }
   .success-screen p{
     margin:0;
     color:var(--text-soft);
     font-size:14px;
+    max-width:32ch;
+    line-height:1.5;
   }
   .hidden{display:none !important;}
   .spinner{
-    width:18px;
-    height:18px;
+    width:17px;
+    height:17px;
     border:2px solid rgba(255,255,255,0.4);
     border-top-color:#fff;
     border-radius:50%;
     display:inline-block;
     animation:spin 0.7s linear infinite;
-    vertical-align:middle;
-    margin-right:8px;
+    flex:none;
   }
   @keyframes spin{to{transform:rotate(360deg);}}
+
+  @media (prefers-reduced-motion: reduce){
+    section, .error, .success-icon{ animation:none !important; }
+    button, .dot{ transition:none !important; }
+  }
 </style>
 </head>
 <body>
 <div class="app">
   <header>
-    <h1>Gemba Bulgu Girişi</h1>
-    <div class="progress">
-      <div class="dot active" id="dot1"></div>
-      <div class="progress-line"></div>
-      <div class="dot" id="dot2"></div>
+    <img class="brand-mark" src="icons/icon-192.png" alt="">
+    <div class="header-text">
+      <h1>Gemba Bulgu Girişi</h1>
+      <div class="progress">
+        <div class="dot active" id="dot1"></div>
+        <div class="progress-line"></div>
+        <div class="dot" id="dot2"></div>
+      </div>
     </div>
   </header>
 
@@ -232,7 +327,12 @@
       <div class="error" id="step1Error"></div>
 
       <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden">
-      <button class="btn-primary" id="takePhotoBtn">📷 Fotoğraf Çek</button>
+      <button class="btn-primary" id="takePhotoBtn">
+        <span class="btn-icon">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2Z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+        </span>
+        Fotoğraf Çek
+      </button>
       <p class="hint">Önce bölge ve sorumlu kişiyi seçin, ardından fotoğraf çekin.</p>
     </section>
 
@@ -250,7 +350,9 @@
 
     <!-- SUCCESS -->
     <section id="successScreen" class="success-screen hidden">
-      <div class="success-icon">✓</div>
+      <div class="success-icon">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+      </div>
       <h2>Kaydedildi</h2>
       <p>Bulgunuz sisteme iletildi. Yeni bir kayıt için hazırlanıyor...</p>
     </section>
@@ -311,8 +413,9 @@ async function loadOptions() {
 }
 
 function showError(el, msg) {
-  el.textContent = msg;
-  el.style.display = 'block';
+  el.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg><span></span>';
+  el.querySelector('span').textContent = msg;
+  el.style.display = 'flex';
 }
 
 function hideError(el) {
