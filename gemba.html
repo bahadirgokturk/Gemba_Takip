@@ -193,6 +193,20 @@
     transform:none;
   }
   .btn-icon{ flex:none; display:flex; }
+  .btn-row{ display:flex; gap:10px; }
+  .btn-row .btn-primary{ width:auto; flex:1; }
+  .btn-outline{
+    flex:1;
+    background:var(--surface);
+    color:var(--accent);
+    border:1.5px solid var(--accent);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+  }
+  .btn-outline:hover{ background:var(--accent-soft); }
+  .btn-outline:active{ background:var(--accent-soft); transform:scale(0.98); }
   .link-btn{
     background:none;
     border:none;
@@ -334,19 +348,29 @@
       <div class="error" id="step1Error"></div>
 
       <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden">
-      <button class="btn-primary" id="takePhotoBtn">
-        <span class="btn-icon">
-          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2Z"></path><circle cx="12" cy="13" r="4"></circle></svg>
-        </span>
-        Fotoğraf Çek
-      </button>
-      <p class="hint">Önce bölge, sorumlu kişi ve nedeni seçin, ardından fotoğraf çekin.</p>
+      <input type="file" id="videoInput" accept="video/*" capture="environment" class="hidden">
+      <div class="btn-row">
+        <button class="btn-primary" id="takePhotoBtn">
+          <span class="btn-icon">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2Z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+          </span>
+          Fotoğraf
+        </button>
+        <button class="btn-outline" id="takeVideoBtn">
+          <span class="btn-icon">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
+          </span>
+          Video (max 30sn)
+        </button>
+      </div>
+      <p class="hint">Önce bölge, sorumlu kişi ve nedeni seçin, ardından fotoğraf veya video çekin.</p>
     </section>
 
     <!-- STEP 2 -->
     <section id="step2" class="hidden">
       <div class="card">
         <img id="previewImg" class="preview-img" alt="Önizleme">
+        <video id="previewVideo" class="preview-img hidden" controls playsinline></video>
       </div>
 
       <div class="error" id="step2Error"></div>
@@ -383,14 +407,20 @@ const successScreen = document.getElementById('successScreen');
 const dot1 = document.getElementById('dot1');
 const dot2 = document.getElementById('dot2');
 const cameraInput = document.getElementById('cameraInput');
+const videoInput = document.getElementById('videoInput');
 const takePhotoBtn = document.getElementById('takePhotoBtn');
+const takeVideoBtn = document.getElementById('takeVideoBtn');
 const previewImg = document.getElementById('previewImg');
+const previewVideo = document.getElementById('previewVideo');
 const submitBtn = document.getElementById('submitBtn');
 const retakeBtn = document.getElementById('retakeBtn');
 const step1Error = document.getElementById('step1Error');
 const step2Error = document.getElementById('step2Error');
 
+const MAX_VIDEO_SECONDS = 30;
+
 let selectedFile = null;
+let selectedMediaType = 'photo';
 
 const OPTION_LISTS = [
   { table: 'gemba_areas', select: areaSelect, placeholder: 'Bölge seçin...' },
@@ -429,29 +459,68 @@ function hideError(el) {
   el.style.display = 'none';
 }
 
-takePhotoBtn.addEventListener('click', () => {
+function validateStep1() {
   hideError(step1Error);
   if (!areaSelect.value) {
     showError(step1Error, 'Lütfen önce bir bölge seçin.');
-    return;
+    return false;
   }
   if (!responsibleSelect.value) {
     showError(step1Error, 'Lütfen sorumlu kişiyi seçin.');
-    return;
+    return false;
   }
   if (!reasonSelect.value) {
     showError(step1Error, 'Lütfen uygunsuzluk nedenini seçin.');
-    return;
+    return false;
   }
+  return true;
+}
+
+takePhotoBtn.addEventListener('click', () => {
+  if (!validateStep1()) return;
   cameraInput.click();
+});
+
+takeVideoBtn.addEventListener('click', () => {
+  if (!validateStep1()) return;
+  videoInput.click();
 });
 
 cameraInput.addEventListener('change', () => {
   const file = cameraInput.files[0];
   if (!file) return;
   selectedFile = file;
+  selectedMediaType = 'photo';
+  previewVideo.pause();
+  previewVideo.classList.add('hidden');
+  previewImg.classList.remove('hidden');
   previewImg.src = URL.createObjectURL(file);
   goToStep2();
+});
+
+videoInput.addEventListener('change', () => {
+  const file = videoInput.files[0];
+  if (!file) return;
+
+  const objectUrl = URL.createObjectURL(file);
+  const probe = document.createElement('video');
+  probe.preload = 'metadata';
+  probe.onloadedmetadata = () => {
+    if (probe.duration > MAX_VIDEO_SECONDS + 0.5) {
+      showError(step1Error, `Video ${Math.round(probe.duration)} saniye, en fazla ${MAX_VIDEO_SECONDS} saniye olmalı. Lütfen daha kısa bir video çekin.`);
+      URL.revokeObjectURL(objectUrl);
+      videoInput.value = '';
+      return;
+    }
+
+    selectedFile = file;
+    selectedMediaType = 'video';
+    previewImg.classList.add('hidden');
+    previewVideo.classList.remove('hidden');
+    previewVideo.src = objectUrl;
+    goToStep2();
+  };
+  probe.src = objectUrl;
 });
 
 function goToStep1() {
@@ -474,7 +543,11 @@ function goToStep2() {
 
 retakeBtn.addEventListener('click', () => {
   selectedFile = null;
+  selectedMediaType = 'photo';
   cameraInput.value = '';
+  videoInput.value = '';
+  previewVideo.pause();
+  previewVideo.removeAttribute('src');
   goToStep1();
 });
 
@@ -488,13 +561,14 @@ submitBtn.addEventListener('click', async () => {
     const area = areaSelect.value;
     const responsible = responsibleSelect.value;
     const reason = reasonSelect.value;
-    const ext = (selectedFile.name.split('.').pop() || 'jpg').toLowerCase();
+    const defaultExt = selectedMediaType === 'video' ? 'mp4' : 'jpg';
+    const ext = (selectedFile.name.split('.').pop() || defaultExt).toLowerCase();
     const fileName = `${crypto.randomUUID()}.${ext}`;
 
     const { error: uploadError } = await supabaseClient
       .storage
       .from('gemba-photos')
-      .upload(fileName, selectedFile, { contentType: selectedFile.type || 'image/jpeg' });
+      .upload(fileName, selectedFile, { contentType: selectedFile.type || (selectedMediaType === 'video' ? 'video/mp4' : 'image/jpeg') });
 
     if (uploadError) throw uploadError;
 
@@ -509,7 +583,8 @@ submitBtn.addEventListener('click', async () => {
         area: area,
         responsible: responsible,
         reason: reason,
-        photo_url: urlData.publicUrl
+        photo_url: urlData.publicUrl,
+        media_type: selectedMediaType
       });
 
     if (insertError) throw insertError;
@@ -530,7 +605,11 @@ function showSuccess() {
 
   setTimeout(() => {
     selectedFile = null;
+    selectedMediaType = 'photo';
     cameraInput.value = '';
+    videoInput.value = '';
+    previewVideo.pause();
+    previewVideo.removeAttribute('src');
     areaSelect.value = '';
     responsibleSelect.value = '';
     reasonSelect.value = '';

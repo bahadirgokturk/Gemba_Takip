@@ -17,6 +17,12 @@ create table if not exists gemba_findings (
 -- Daha önceki bir sürümde bu tabloyu oluşturduysanız "reason" kolonu eksik olabilir.
 alter table gemba_findings add column if not exists reason text not null default '';
 
+-- "photo_url" hem fotoğraf hem video linkini tutar (kolon adı geriye dönük uyumluluk
+-- için değiştirilmedi); media_type hangisi olduğunu belirtir.
+alter table gemba_findings add column if not exists media_type text not null default 'photo';
+alter table gemba_findings drop constraint if exists gemba_findings_media_type_check;
+alter table gemba_findings add constraint gemba_findings_media_type_check check (media_type in ('photo','video'));
+
 create index if not exists idx_gemba_findings_area on gemba_findings(area);
 create index if not exists idx_gemba_findings_responsible on gemba_findings(responsible);
 create index if not exists idx_gemba_findings_reason on gemba_findings(reason);
