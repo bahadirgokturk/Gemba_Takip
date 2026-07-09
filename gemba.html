@@ -337,6 +337,25 @@
     animation:fadeSlideIn .2s ease both;
   }
   .error svg{ flex:none; margin-top:1px; }
+  .offline-banner{
+    background:var(--warn-bg);
+    color:var(--warn);
+    padding:10px 14px;
+    border-radius:var(--radius-sm);
+    font-size:13px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .offline-banner svg{ flex:none; }
+  .offline-banner span{ flex:1; line-height:1.4; }
+  .offline-banner button{
+    flex:none;
+    padding:6px 10px;
+    font-size:12px;
+    background:var(--surface);
+    border-radius:calc(var(--radius-sm) - 3px);
+  }
   .success-screen{
     flex:1;
     display:flex;
@@ -408,6 +427,12 @@
   </header>
 
   <main>
+    <div class="offline-banner hidden" id="offlineBanner">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h.01"></path><path d="M8.5 16.5a5 5 0 0 1 7 0"></path><path d="M5 12.9a10 10 0 0 1 5-2.69"></path><path d="M19 12.9a10 10 0 0 0-2.5-1.8"></path><path d="M2 8.82a15 15 0 0 1 4.17-2.65"></path><path d="M22 8.82a15 15 0 0 0-11.29-3.8"></path><line x1="2" y1="2" x2="22" y2="22"></line></svg>
+      <span id="offlineBannerText"></span>
+      <button type="button" id="offlineSyncBtn">Şimdi Gönder</button>
+    </div>
+
     <!-- STEP 1 -->
     <section id="step1">
       <div>
@@ -485,8 +510,8 @@
       <div class="success-icon">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
       </div>
-      <h2>Kaydedildi</h2>
-      <p>Bulgunuz sisteme iletildi. Yeni bir kayıt için hazırlanıyor...</p>
+      <h2 id="successTitle">Kaydedildi</h2>
+      <p id="successText">Bulgunuz sisteme iletildi. Yeni bir kayıt için hazırlanıyor...</p>
     </section>
   </main>
 </div>
@@ -522,6 +547,11 @@ const submitBtn = document.getElementById('submitBtn');
 const retakeBtn = document.getElementById('retakeBtn');
 const step1Error = document.getElementById('step1Error');
 const step2Error = document.getElementById('step2Error');
+const offlineBanner = document.getElementById('offlineBanner');
+const offlineBannerText = document.getElementById('offlineBannerText');
+const offlineSyncBtn = document.getElementById('offlineSyncBtn');
+const successTitle = document.getElementById('successTitle');
+const successText = document.getElementById('successText');
 
 const MAX_VIDEO_SECONDS = 30;
 
@@ -533,26 +563,173 @@ const OPTION_LISTS = [
   { table: 'gemba_reasons', select: reasonSelect, placeholder: 'Uygunsuzluk nedeni seçin...' }
 ];
 
-async function loadOptions() {
-  const results = await Promise.all(
-    OPTION_LISTS.map(l => supabaseClient.from(l.table).select('name').order('name', { ascending: true }))
-  );
+const OPTIONS_CACHE_KEY = 'gemba_options_cache_v1';
 
-  if (results.some(r => r.error)) {
-    showError(step1Error, 'Liste yüklenemedi. Sayfayı yenileyin.');
-    return;
-  }
-
-  OPTION_LISTS.forEach((l, i) => {
+function populateSelects(cache) {
+  OPTION_LISTS.forEach(l => {
     l.select.innerHTML = `<option value="">${l.placeholder}</option>`;
-    (results[i].data || []).forEach(row => {
+    (cache[l.table] || []).forEach(name => {
       const opt = document.createElement('option');
-      opt.value = row.name;
-      opt.textContent = row.name;
+      opt.value = name;
+      opt.textContent = name;
       l.select.appendChild(opt);
     });
   });
 }
+
+async function loadOptions() {
+  try {
+    const results = await Promise.all(
+      OPTION_LISTS.map(l => supabaseClient.from(l.table).select('name').order('name', { ascending: true }))
+    );
+
+    if (results.some(r => r.error)) throw new Error('supabase error');
+
+    const cache = {};
+    OPTION_LISTS.forEach((l, i) => { cache[l.table] = (results[i].data || []).map(r => r.name); });
+    localStorage.setItem(OPTIONS_CACHE_KEY, JSON.stringify(cache));
+
+    populateSelects(cache);
+  } catch (e) {
+    const cached = localStorage.getItem(OPTIONS_CACHE_KEY);
+    if (cached) {
+      populateSelects(JSON.parse(cached));
+      showError(step1Error, 'Çevrimdışısınız: son bilinen bölge/sorumlu/neden listesi gösteriliyor.');
+    } else {
+      showError(step1Error, 'Liste yüklenemedi. İnternet bağlantınızı kontrol edip sayfayı yenileyin.');
+    }
+  }
+}
+
+// ---------- ÇEVRİMDIŞI KUYRUK (IndexedDB) ----------
+// İnternet yokken "Gönder"e basılırsa, dosyalar cihazda güvenle saklanır ve
+// bağlantı geri gelince otomatik olarak Supabase'e gönderilir.
+const OFFLINE_DB_NAME = 'gemba-offline';
+const OFFLINE_STORE = 'queue';
+
+function openQueueDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(OFFLINE_DB_NAME, 1);
+    req.onupgradeneeded = () => {
+      req.result.createObjectStore(OFFLINE_STORE, { keyPath: 'id' });
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function queueAdd(entry) {
+  const db = await openQueueDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(OFFLINE_STORE, 'readwrite');
+    tx.objectStore(OFFLINE_STORE).add(entry);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function queueGetAll() {
+  const db = await openQueueDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(OFFLINE_STORE, 'readonly');
+    const req = tx.objectStore(OFFLINE_STORE).getAll();
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function queueDelete(id) {
+  const db = await openQueueDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(OFFLINE_STORE, 'readwrite');
+    tx.objectStore(OFFLINE_STORE).delete(id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function saveSubmissionOffline({ area, responsible, reason, description, submissionId }) {
+  const items = mediaQueue.map(item => ({
+    blob: item.file,
+    fileType: item.file.type,
+    ext: (item.file.name.split('.').pop() || (item.mediaType === 'video' ? 'mp4' : 'jpg')).toLowerCase(),
+    mediaType: item.mediaType
+  }));
+
+  await queueAdd({
+    id: crypto.randomUUID(),
+    area, responsible, reason, description, submissionId,
+    items,
+    createdAt: Date.now()
+  });
+}
+
+async function updatePendingBadge() {
+  let count = 0;
+  try {
+    count = (await queueGetAll()).length;
+  } catch (e) { /* IndexedDB kullanılamıyorsa sessizce yoksay */ }
+
+  if (count === 0) {
+    offlineBanner.classList.add('hidden');
+    return;
+  }
+
+  offlineBanner.classList.remove('hidden');
+  offlineBannerText.textContent = navigator.onLine
+    ? `${count} bulgu gönderiliyor...`
+    : `${count} bulgu bağlantı bekliyor. İnternet gelince otomatik gönderilecek.`;
+}
+
+let isFlushing = false;
+
+async function flushOfflineQueue() {
+  if (isFlushing || !navigator.onLine) return;
+  isFlushing = true;
+
+  try {
+    const entries = await queueGetAll();
+    for (const entry of entries) {
+      try {
+        const rows = await Promise.all(entry.items.map(async (item) => {
+          const fileName = `${crypto.randomUUID()}.${item.ext}`;
+
+          const { error: uploadError } = await supabaseClient
+            .storage
+            .from('gemba-photos')
+            .upload(fileName, item.blob, { contentType: item.fileType || (item.mediaType === 'video' ? 'video/mp4' : 'image/jpeg') });
+
+          if (uploadError) throw uploadError;
+
+          const { data: urlData } = supabaseClient.storage.from('gemba-photos').getPublicUrl(fileName);
+
+          return {
+            area: entry.area,
+            responsible: entry.responsible,
+            reason: entry.reason,
+            description: entry.description,
+            photo_url: urlData.publicUrl,
+            media_type: item.mediaType,
+            submission_id: entry.submissionId
+          };
+        }));
+
+        const { error: insertError } = await supabaseClient.from('gemba_findings').insert(rows);
+        if (insertError) throw insertError;
+
+        await queueDelete(entry.id);
+      } catch (e) {
+        break; // muhtemelen hâlâ çevrimdışı; bir sonraki denemede devam edilecek
+      }
+    }
+  } finally {
+    isFlushing = false;
+    updatePendingBadge();
+  }
+}
+
+offlineSyncBtn.addEventListener('click', flushOfflineQueue);
+window.addEventListener('online', flushOfflineQueue);
 
 function showError(el, msg) {
   el.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg><span></span>';
@@ -739,13 +916,27 @@ submitBtn.addEventListener('click', async () => {
   submitBtn.disabled = true;
   submitBtn.innerHTML = '<span class="spinner"></span>Gönderiliyor...';
 
-  try {
-    const area = areaSelect.value;
-    const responsible = responsibleSelect.value;
-    const reason = reasonSelect.value;
-    const description = descriptionInput.value.trim() || null;
-    const submissionId = crypto.randomUUID();
+  const area = areaSelect.value;
+  const responsible = responsibleSelect.value;
+  const reason = reasonSelect.value;
+  const description = descriptionInput.value.trim() || null;
+  const submissionId = crypto.randomUUID();
 
+  if (!navigator.onLine) {
+    try {
+      await saveSubmissionOffline({ area, responsible, reason, description, submissionId });
+      showSuccess(true);
+    } catch (e) {
+      showError(step2Error, 'Kaydedilemedi. Lütfen tekrar deneyin.');
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Gönder';
+      updatePendingBadge();
+    }
+    return;
+  }
+
+  try {
     const rows = await Promise.all(mediaQueue.map(async (item) => {
       const defaultExt = item.mediaType === 'video' ? 'mp4' : 'jpg';
       const ext = (item.file.name.split('.').pop() || defaultExt).toLowerCase();
@@ -780,19 +971,37 @@ submitBtn.addEventListener('click', async () => {
 
     if (insertError) throw insertError;
 
-    showSuccess();
+    showSuccess(false);
   } catch (err) {
-    showError(step2Error, 'Gönderim başarısız oldu. Lütfen tekrar deneyin.');
+    if (!navigator.onLine) {
+      try {
+        await saveSubmissionOffline({ area, responsible, reason, description, submissionId });
+        showSuccess(true);
+      } catch (e) {
+        showError(step2Error, 'Gönderim başarısız oldu. Lütfen tekrar deneyin.');
+      }
+      updatePendingBadge();
+    } else {
+      showError(step2Error, 'Gönderim başarısız oldu. Lütfen tekrar deneyin.');
+    }
   } finally {
     submitBtn.disabled = false;
     submitBtn.textContent = 'Gönder';
   }
 });
 
-function showSuccess() {
+function showSuccess(offline) {
   step1.classList.add('hidden');
   step2.classList.add('hidden');
   successScreen.classList.remove('hidden');
+
+  if (offline) {
+    successTitle.textContent = 'Kaydedildi (bağlantı bekleniyor)';
+    successText.textContent = 'İnternet bağlantısı yok. Bulgunuz cihazınızda güvenle saklandı, bağlantı gelince otomatik gönderilecek.';
+  } else {
+    successTitle.textContent = 'Kaydedildi';
+    successText.textContent = 'Bulgunuz sisteme iletildi. Yeni bir kayıt için hazırlanıyor...';
+  }
 
   setTimeout(() => {
     clearQueue();
@@ -805,10 +1014,12 @@ function showSuccess() {
     descriptionInput.value = '';
     loadOptions();
     goToStep1();
-  }, 2500);
+  }, offline ? 3500 : 2500);
 }
 
 loadOptions();
+updatePendingBadge();
+flushOfflineQueue();
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {

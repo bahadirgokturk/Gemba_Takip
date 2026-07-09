@@ -5,6 +5,7 @@ ardından bir admin panelinde görüntülemek için basit, framework'süz bir si
 
 - `gemba.html` — saha sayfası, login yok, herkes kullanabilir. Telefona uygulama gibi
   kurulabilen bir PWA'dır (bkz. aşağıdaki "Sahada uygulama gibi kurulum" bölümü).
+  İnternet kesildiğinde bile çalışır (bkz. "Çevrimdışı çalışma" bölümü).
 - `admin.html` — admin paneli, Supabase Auth (email/şifre) ile korunur. Sadece gelen
   bulguları görüntüler; başka hiçbir işlem yapmaz.
 - `schema.sql` — Supabase veritabanı şeması ve RLS politikaları.
@@ -120,6 +121,24 @@ döndürdüğü id'yi kullanarak düzeltin: `select vault.update_secret('dönen-
 
 Bu adım opsiyoneldir — çalıştırmazsanız sistemin geri kalanı normal şekilde çalışmaya devam
 eder, sadece eski fotoğraflar otomatik silinmez.
+
+## Çevrimdışı çalışma
+
+Üretim hattında internet bazen gidebiliyor — bunun için ekstra bir kurulum gerekmez, sistem
+otomatik olarak devreye girer:
+
+- **Bölge/sorumlu/neden listeleri** her başarılı yüklemede telefonda önbelleğe alınır. İnternet
+  olmadan sayfa açılırsa, son bilinen liste gösterilir (üstte küçük bir "çevrimdışısınız"
+  uyarısıyla).
+- **"Gönder"e basıldığında internet yoksa**, fotoğraf/videolar telefonun kendi hafızasına
+  (IndexedDB) güvenle kaydedilir ve "Kaydedildi (bağlantı bekleniyor)" ekranı gösterilir —
+  hiçbir veri kaybolmaz.
+- **Bağlantı geri geldiğinde** (veya sayfa yeniden açıldığında) bekleyen bulgular otomatik
+  olarak Supabase'e gönderilir. Bekleyen bulgu varsa üstte "X bulgu bağlantı bekliyor" rozeti
+  görünür; isteğe bağlı "Şimdi Gönder" butonuyla elle de tetiklenebilir.
+
+Saha kişisinin ekstra bir şey yapmasına gerek yoktur — internetsizken de formu doldurup
+fotoğraf/video çekip "Gönder"e basması yeterlidir.
 
 ## Sahada uygulama gibi kurulum (PWA)
 
