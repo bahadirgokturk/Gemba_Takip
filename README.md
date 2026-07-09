@@ -8,6 +8,8 @@ ardından bir admin panelinde görüntülemek için basit, framework'süz bir si
 - `admin.html` — admin paneli, Supabase Auth (email/şifre) ile korunur. Sadece gelen
   bulguları görüntüler; başka hiçbir işlem yapmaz.
 - `schema.sql` — Supabase veritabanı şeması ve RLS politikaları.
+- `cleanup.sql` — 7 günden eski bulguları (fotoğraf + kayıt) otomatik silen, Supabase Cron
+  ile çalışan opsiyonel bakım scripti (bkz. aşağıdaki "Otomatik silme" bölümü).
 - `manifest.json`, `service-worker.js`, `icons/` — `gemba.html`'in PWA (yüklenebilir
   uygulama) olarak çalışmasını sağlayan dosyalar.
 
@@ -83,6 +85,39 @@ onu seçip ekleyin:
   Uygun Değil", "Güvenlik Ekipmanı Eksik").
 
 Bu üç liste, saha sayfasındaki (`gemba.html`) dropdown'ları otomatik olarak besler.
+
+## Otomatik silme (7 gün sonra, opsiyonel)
+
+`cleanup.sql`, yüklenen fotoğrafları ve kayıtları **7 gün sonra otomatik olarak** hem
+`gemba_findings` tablosundan hem de Storage'daki fiziksel dosya olarak siler. Silinmesine
+**2 gün veya daha az** kalan bulgular admin panelinde bir uyarı rozetiyle
+("Yarın silinecek", "2 gün sonra silinecek") işaretlenir — bunun için ekstra bir kurulum
+gerekmez, admin panelini her açtığınızda otomatik hesaplanır.
+
+Silmenin kendisi ise Supabase'in **pg_cron** özelliğiyle sunucu tarafında, siz panele
+girmeseniz bile her gece çalışır. Kurulumu:
+
+1. Supabase panelinde **Database > Extensions**'a gidin, `pg_cron`, `pg_net` ve
+   `supabase_vault` eklentilerinin **açık (enabled)** olduğundan emin olun (değilse tıklayıp açın).
+2. **Project Settings > API Keys** sayfasından `sb_secret_...` ile başlayan **secret key**'inizi
+   kopyalayın.
+3. **SQL Editor**'de aşağıdaki komutu çalıştırın (bu komutu hiçbir dosyaya kaydetmeyin,
+   sadece burada bir kere çalıştırın — anahtar Supabase Vault'ta şifreli saklanır):
+
+   ```sql
+   select vault.create_secret(
+     'BURAYA_SECRET_KEYİNİZİ_YAPIŞTIRIN',
+     'gemba_service_key'
+   );
+   ```
+
+4. Ardından `cleanup.sql` dosyasının tüm içeriğini SQL Editor'e yapıştırıp çalıştırın. Bu
+   dosyanın kendisinde hiçbir gizli anahtar yoktur, GitHub'a güvenle yüklenebilir.
+5. Test etmek için SQL Editor'de `select gemba_cleanup_old_findings();` çalıştırın — hata
+   almamalısınız (7 günden eski kaydınız yoksa sessizce biter, bu normaldir).
+
+Bu adım opsiyoneldir — çalıştırmazsanız sistemin geri kalanı normal şekilde çalışmaya devam
+eder, sadece eski fotoğraflar otomatik silinmez.
 
 ## Sahada uygulama gibi kurulum (PWA)
 
