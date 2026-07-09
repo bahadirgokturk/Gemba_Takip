@@ -95,24 +95,20 @@ Bu üç liste, saha sayfasındaki (`gemba.html`) dropdown'ları otomatik olarak 
 gerekmez, admin panelini her açtığınızda otomatik hesaplanır.
 
 Silmenin kendisi ise Supabase'in **pg_cron** özelliğiyle sunucu tarafında, siz panele
-girmeseniz bile her gece çalışır. Kurulumu:
+girmeseniz bile her gece çalışır. Anahtarınız bir Postgres tablosunda (`gemba_secrets`)
+saklanır; bu tabloda RLS açık ama hiçbir "policy" tanımlı değildir, yani ne saha sayfası
+(anon) ne de admin paneli (authenticated) API üzerinden bu tabloyu okuyabilir — sadece
+veritabanının kendi içinde çalışan zamanlanmış görev erişebilir. Kurulumu:
 
-1. Supabase panelinde **Database > Extensions**'a gidin, `pg_cron`, `pg_net` ve
-   `supabase_vault` eklentilerinin **açık (enabled)** olduğundan emin olun (değilse tıklayıp açın).
+1. Supabase panelinde **SQL Editor**'de `cleanup.sql` dosyasındaki **ADIM 0** bölümünü
+   çalıştırın (bu, kilitli `gemba_secrets` tablosunu oluşturur).
 2. **Project Settings > API Keys** sayfasından `sb_secret_...` ile başlayan **secret key**'inizi
    kopyalayın.
-3. **SQL Editor**'de aşağıdaki komutu çalıştırın (bu komutu hiçbir dosyaya kaydetmeyin,
-   sadece burada bir kere çalıştırın — anahtar Supabase Vault'ta şifreli saklanır):
-
-   ```sql
-   select vault.create_secret(
-     'BURAYA_SECRET_KEYİNİZİ_YAPIŞTIRIN',
-     'gemba_service_key'
-   );
-   ```
-
-4. Ardından `cleanup.sql` dosyasının tüm içeriğini SQL Editor'e yapıştırıp çalıştırın. Bu
-   dosyanın kendisinde hiçbir gizli anahtar yoktur, GitHub'a güvenle yüklenebilir.
+3. `cleanup.sql` içindeki **ADIM 1** yorumundaki komutu kopyalayıp, `BURAYA_...` kısmını
+   gerçek anahtarınızla değiştirerek SQL Editor'e **ayrıca** yapıştırıp çalıştırın (bu komutu
+   hiçbir dosyaya kaydetmeyin, sadece SQL Editor'e bir kere yapıştırın).
+4. `cleanup.sql`'in **ADIM 2** bölümünü (eklentiler + fonksiyon + zamanlama) çalıştırın.
+   Bu bölümde hiçbir gizli anahtar yoktur, GitHub'a güvenle yüklenebilir.
 5. Test etmek için SQL Editor'de `select gemba_cleanup_old_findings();` çalıştırın — hata
    almamalısınız (7 günden eski kaydınız yoksa sessizce biter, bu normaldir).
 
