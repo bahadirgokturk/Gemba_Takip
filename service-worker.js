@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gemba-shell-v1';
+const CACHE_NAME = 'gemba-shell-v2';
 const SHELL_FILES = [
   './gemba.html',
   './manifest.json'
@@ -20,12 +20,20 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Sadece uygulama kabuğunu (HTML/manifest) cache'ler; Supabase istekleri her zaman ağdan gider.
+// Uygulama kabuğu (HTML/manifest) için önce ağ, sadece internet yoksa önbellek
+// kullanılır — böylece güncellemeler her açılışta anında yansır. Supabase
+// istekleri zaten bu dosyanın kapsamı dışında, her zaman doğrudan ağdan gider.
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
 
   event.respondWith(
-    caches.match(event.request).then((cached) => cached || fetch(event.request))
+    fetch(event.request)
+      .then((response) => {
+        const clone = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+        return response;
+      })
+      .catch(() => caches.match(event.request))
   );
 });
