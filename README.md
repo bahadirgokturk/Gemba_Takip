@@ -21,8 +21,11 @@ doğrudan yüklenebilir.
 1. Bölge seç
 2. Sorumlu kişi seç
 3. Uygunsuzluk nedeni seç
-4. Fotoğraf çek, video çek (en fazla 30 saniye) ya da galeriden mevcut bir fotoğraf/video yükle
-5. Önizlemeyi kontrol et, Gönder
+4. İsterse açıklama yaz (opsiyonel)
+5. Fotoğraf çek, video çek (en fazla 30 saniye) ya da galeriden yükle — birden fazla
+   fotoğraf/video eklenebilir, her biri küçük bir kart olarak görünür, "x" ile tek tek
+   kaldırılabilir
+6. Önizlemeyi kontrol et, Gönder — birden fazla medya eklendiyse hepsi tek seferde gider
 
 Not alanı yoktur — sistem bilinçli olarak bu kadar basit tutulmuştur.
 
@@ -131,14 +134,18 @@ imzalama gerektirmez, siteyi her güncellediğinizde otomatik olarak günceldir.
 
 ## Kullanım
 
-- **Saha ekibi:** Ana ekrana eklenen Gemba ikonuna dokunur. Bölge, sorumlu kişi ve
-  uygunsuzluk nedeni seçip fotoğraf çeker, önizler, gönderir.
-- **Admin:** `admin.html`'e giriş yapıp **Bulgular** sekmesinde gelen bulguları (fotoğraf,
-  bölge, sorumlu kişi, neden, tarih) sırayla görüntüler; bölge/sorumlu/nedene göre filtreler.
-  Yeni bir bulgu geldiğinde liste sayfa yenilemeden anında güncellenir (Realtime). Her
-  fotoğrafın üzerindeki küçük kalem ikonuyla bölge/sorumlu/neden düzenlenebilir, çöp kutusu
-  ikonuyla (onay istenerek) hem fotoğraf hem kayıt kalıcı olarak silinebilir.
+- **Saha ekibi:** Ana ekrana eklenen Gemba ikonuna dokunur. Bölge, sorumlu kişi, uygunsuzluk
+  nedeni seçip isteğe bağlı açıklama yazar; bir veya birden fazla fotoğraf/video ekleyip gönderir.
+- **Admin:** `admin.html`'e giriş yapıp **Bulgular** sekmesinde gelen bulguları (fotoğraf/video,
+  bölge, sorumlu kişi, neden, açıklama, tarih) sırayla görüntüler; bölge/sorumlu/nedene göre
+  filtreler. Yeni bir bulgu geldiğinde liste sayfa yenilemeden anında güncellenir (Realtime).
+  Her medyanın üzerindeki küçük kalem ikonuyla bölge/sorumlu/neden düzenlenebilir, çöp kutusu
+  ikonuyla (onay istenerek) hem medya hem kayıt kalıcı olarak silinebilir.
   **Listeler** sekmesinden bölge, sorumlu kişi ve uygunsuzluk nedeni listelerini yönetir.
+
+  > Bir gönderimde birden fazla fotoğraf/video eklenirse, her biri `gemba_findings`
+  > tablosunda ayrı bir satır olarak kaydedilir (aynı bölge/sorumlu/neden/açıklama ve neredeyse
+  > aynı zaman damgasıyla) — admin panelinde ayrı kartlar olarak, birbirine yakın sırada görünür.
 
 ## Notlar
 

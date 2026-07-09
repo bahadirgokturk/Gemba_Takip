@@ -23,10 +23,18 @@ alter table gemba_findings add column if not exists media_type text not null def
 alter table gemba_findings drop constraint if exists gemba_findings_media_type_check;
 alter table gemba_findings add constraint gemba_findings_media_type_check check (media_type in ('photo','video'));
 
+-- Serbest metin açıklama (opsiyonel).
+alter table gemba_findings add column if not exists description text;
+
+-- Aynı gönderimde birden fazla fotoğraf/video eklenirse, hepsi ayrı satır olarak
+-- kaydedilir ama aynı submission_id'yi paylaşır (birbirine ait olduklarını belirtmek için).
+alter table gemba_findings add column if not exists submission_id uuid;
+
 create index if not exists idx_gemba_findings_area on gemba_findings(area);
 create index if not exists idx_gemba_findings_responsible on gemba_findings(responsible);
 create index if not exists idx_gemba_findings_reason on gemba_findings(reason);
 create index if not exists idx_gemba_findings_created on gemba_findings(created_at desc);
+create index if not exists idx_gemba_findings_submission on gemba_findings(submission_id);
 
 -- 2) BÖLGE LİSTESİ (admin panelinden yönetilir; saha sayfasındaki dropdown bu tablodan okunur)
 create table if not exists gemba_areas (

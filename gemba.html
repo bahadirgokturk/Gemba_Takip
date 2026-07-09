@@ -162,6 +162,24 @@
     border-color:var(--accent);
     box-shadow:0 0 0 3px rgba(0,106,180,0.16);
   }
+  textarea{
+    width:100%;
+    padding:12px 14px;
+    font-size:15px;
+    font-family:inherit;
+    border:1px solid var(--border);
+    border-radius:var(--radius-sm);
+    background-color:var(--surface);
+    color:var(--text);
+    resize:vertical;
+    min-height:70px;
+    transition:border-color .15s ease, box-shadow .15s ease;
+  }
+  textarea:focus{
+    outline:none;
+    border-color:var(--accent);
+    box-shadow:0 0 0 3px rgba(0,106,180,0.16);
+  }
   button{
     font-family:inherit;
     font-size:16px;
@@ -240,6 +258,67 @@
     object-fit:cover;
     background:var(--border);
   }
+  .media-queue{
+    display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    gap:8px;
+  }
+  .media-queue-item{
+    position:relative;
+    aspect-ratio:1;
+    border-radius:var(--radius-sm);
+    overflow:hidden;
+    background:var(--border);
+    box-shadow:var(--shadow-card);
+  }
+  .media-queue-item img, .media-queue-item video{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    display:block;
+  }
+  .media-queue-video-badge{
+    position:absolute;
+    bottom:5px;
+    left:5px;
+    width:20px;
+    height:20px;
+    border-radius:50%;
+    background:rgba(20,24,31,0.6);
+    color:#fff;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    pointer-events:none;
+  }
+  .media-queue-remove{
+    position:absolute;
+    top:5px;
+    right:5px;
+    width:22px;
+    height:22px;
+    padding:0;
+    border-radius:50%;
+    background:rgba(20,24,31,0.65);
+    color:#fff;
+    border:none;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .media-queue-remove:active{ background:rgba(179,68,30,0.85); }
+  .media-queue-add{
+    aspect-ratio:1;
+    border-radius:var(--radius-sm);
+    border:1.5px dashed var(--border);
+    background:none;
+    color:var(--text-faint);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:0;
+  }
+  .media-queue-add:active{ border-color:var(--accent); color:var(--accent); }
   .hint{
     font-size:13px;
     color:var(--text-faint);
@@ -352,11 +431,16 @@
         </select>
       </div>
 
+      <div>
+        <label for="descriptionInput">Açıklama (opsiyonel)</label>
+        <textarea id="descriptionInput" rows="3" placeholder="Bulguyla ilgili ek bilgi..."></textarea>
+      </div>
+
       <div class="error" id="step1Error"></div>
 
       <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden">
       <input type="file" id="videoInput" accept="video/*" capture="environment" class="hidden">
-      <input type="file" id="galleryInput" accept="image/*,video/*" class="hidden">
+      <input type="file" id="galleryInput" accept="image/*,video/*" multiple class="hidden">
       <div class="btn-row">
         <button class="btn-primary" id="takePhotoBtn">
           <span class="btn-icon">
@@ -382,15 +466,18 @@
 
     <!-- STEP 2 -->
     <section id="step2" class="hidden">
-      <div class="card">
-        <img id="previewImg" class="preview-img" alt="Önizleme">
-        <video id="previewVideo" class="preview-img hidden" controls playsinline></video>
+      <div class="media-queue" id="mediaQueueGrid"></div>
+
+      <div class="btn-row">
+        <button class="btn-outline" id="addMorePhotoBtn" style="font-size:14px; padding:12px;">+ Fotoğraf</button>
+        <button class="btn-outline" id="addMoreVideoBtn" style="font-size:14px; padding:12px;">+ Video</button>
       </div>
+      <button class="link-btn" id="addMoreGalleryBtn">+ Galeriden Yükle</button>
 
       <div class="error" id="step2Error"></div>
 
       <button class="btn-primary" id="submitBtn">Gönder</button>
-      <button class="link-btn" id="retakeBtn">Yeniden çek</button>
+      <button class="link-btn" id="retakeBtn">Baştan başla</button>
     </section>
 
     <!-- SUCCESS -->
@@ -415,6 +502,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const areaSelect = document.getElementById('areaSelect');
 const responsibleSelect = document.getElementById('responsibleSelect');
 const reasonSelect = document.getElementById('reasonSelect');
+const descriptionInput = document.getElementById('descriptionInput');
 const step1 = document.getElementById('step1');
 const step2 = document.getElementById('step2');
 const successScreen = document.getElementById('successScreen');
@@ -426,8 +514,10 @@ const galleryInput = document.getElementById('galleryInput');
 const takePhotoBtn = document.getElementById('takePhotoBtn');
 const takeVideoBtn = document.getElementById('takeVideoBtn');
 const chooseGalleryBtn = document.getElementById('chooseGalleryBtn');
-const previewImg = document.getElementById('previewImg');
-const previewVideo = document.getElementById('previewVideo');
+const addMorePhotoBtn = document.getElementById('addMorePhotoBtn');
+const addMoreVideoBtn = document.getElementById('addMoreVideoBtn');
+const addMoreGalleryBtn = document.getElementById('addMoreGalleryBtn');
+const mediaQueueGrid = document.getElementById('mediaQueueGrid');
 const submitBtn = document.getElementById('submitBtn');
 const retakeBtn = document.getElementById('retakeBtn');
 const step1Error = document.getElementById('step1Error');
@@ -435,8 +525,7 @@ const step2Error = document.getElementById('step2Error');
 
 const MAX_VIDEO_SECONDS = 30;
 
-let selectedFile = null;
-let selectedMediaType = 'photo';
+let mediaQueue = []; // { file, mediaType, previewUrl }
 
 const OPTION_LISTS = [
   { table: 'gemba_areas', select: areaSelect, placeholder: 'Bölge seçin...' },
@@ -507,61 +596,116 @@ chooseGalleryBtn.addEventListener('click', () => {
   galleryInput.click();
 });
 
-function acceptPhotoFile(file) {
-  selectedFile = file;
-  selectedMediaType = 'photo';
-  previewVideo.pause();
-  previewVideo.removeAttribute('src');
-  previewVideo.classList.add('hidden');
-  previewImg.classList.remove('hidden');
-  previewImg.src = URL.createObjectURL(file);
+addMorePhotoBtn.addEventListener('click', () => cameraInput.click());
+addMoreVideoBtn.addEventListener('click', () => videoInput.click());
+addMoreGalleryBtn.addEventListener('click', () => galleryInput.click());
+
+function getVideoDuration(file) {
+  return new Promise((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file);
+    const probe = document.createElement('video');
+    probe.preload = 'metadata';
+    probe.onloadedmetadata = () => resolve({ duration: probe.duration, objectUrl });
+    probe.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error('video okunamadı')); };
+    probe.src = objectUrl;
+  });
+}
+
+function addToQueue(file, mediaType, previewUrl) {
+  mediaQueue.push({ file, mediaType, previewUrl });
+  renderMediaQueue();
   goToStep2();
 }
 
-function acceptVideoFile(file, onReject) {
-  const objectUrl = URL.createObjectURL(file);
-  const probe = document.createElement('video');
-  probe.preload = 'metadata';
-  probe.onloadedmetadata = () => {
-    if (probe.duration > MAX_VIDEO_SECONDS + 0.5) {
-      showError(step1Error, `Video ${Math.round(probe.duration)} saniye, en fazla ${MAX_VIDEO_SECONDS} saniye olmalı. Lütfen daha kısa bir video seçin.`);
-      URL.revokeObjectURL(objectUrl);
-      if (onReject) onReject();
-      return;
-    }
+async function handleFiles(fileList, errorTargetEl) {
+  const skipped = [];
 
-    selectedFile = file;
-    selectedMediaType = 'video';
-    previewImg.classList.add('hidden');
-    previewVideo.classList.remove('hidden');
-    previewVideo.src = objectUrl;
-    goToStep2();
-  };
-  probe.src = objectUrl;
+  for (const file of Array.from(fileList)) {
+    const isVideo = file.type.startsWith('video/');
+
+    if (isVideo) {
+      try {
+        const { duration, objectUrl } = await getVideoDuration(file);
+        if (duration > MAX_VIDEO_SECONDS + 0.5) {
+          skipped.push(`${file.name} (${Math.round(duration)} sn)`);
+          URL.revokeObjectURL(objectUrl);
+          continue;
+        }
+        addToQueue(file, 'video', objectUrl);
+      } catch (e) {
+        skipped.push(file.name);
+      }
+    } else {
+      addToQueue(file, 'photo', URL.createObjectURL(file));
+    }
+  }
+
+  if (skipped.length) {
+    showError(errorTargetEl, `Şu video(lar) ${MAX_VIDEO_SECONDS} saniyeyi aştığı için eklenmedi: ${skipped.join(', ')}`);
+  }
+}
+
+function currentErrorTarget() {
+  return step1.classList.contains('hidden') ? step2Error : step1Error;
 }
 
 cameraInput.addEventListener('change', () => {
-  const file = cameraInput.files[0];
-  if (!file) return;
-  acceptPhotoFile(file);
+  handleFiles(cameraInput.files, currentErrorTarget());
+  cameraInput.value = '';
 });
 
 videoInput.addEventListener('change', () => {
-  const file = videoInput.files[0];
-  if (!file) return;
-  acceptVideoFile(file, () => { videoInput.value = ''; });
+  handleFiles(videoInput.files, currentErrorTarget());
+  videoInput.value = '';
 });
 
 galleryInput.addEventListener('change', () => {
-  const file = galleryInput.files[0];
-  if (!file) return;
-
-  if (file.type.startsWith('video/')) {
-    acceptVideoFile(file, () => { galleryInput.value = ''; });
-  } else {
-    acceptPhotoFile(file);
-  }
+  handleFiles(galleryInput.files, currentErrorTarget());
+  galleryInput.value = '';
 });
+
+function renderMediaQueue() {
+  mediaQueueGrid.innerHTML = '';
+
+  mediaQueue.forEach((item, index) => {
+    const cell = document.createElement('div');
+    cell.className = 'media-queue-item';
+
+    const media = item.mediaType === 'video'
+      ? Object.assign(document.createElement('video'), { src: item.previewUrl, muted: true })
+      : Object.assign(document.createElement('img'), { src: item.previewUrl, alt: 'Önizleme' });
+    cell.appendChild(media);
+
+    if (item.mediaType === 'video') {
+      const badge = document.createElement('div');
+      badge.className = 'media-queue-video-badge';
+      badge.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"></polygon></svg>';
+      cell.appendChild(badge);
+    }
+
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'media-queue-remove';
+    removeBtn.type = 'button';
+    removeBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+    removeBtn.addEventListener('click', () => removeFromQueue(index));
+    cell.appendChild(removeBtn);
+
+    mediaQueueGrid.appendChild(cell);
+  });
+}
+
+function removeFromQueue(index) {
+  const [removed] = mediaQueue.splice(index, 1);
+  if (removed) URL.revokeObjectURL(removed.previewUrl);
+  renderMediaQueue();
+  if (mediaQueue.length === 0) goToStep1();
+}
+
+function clearQueue() {
+  mediaQueue.forEach(item => URL.revokeObjectURL(item.previewUrl));
+  mediaQueue = [];
+  mediaQueueGrid.innerHTML = '';
+}
 
 function goToStep1() {
   step1.classList.remove('hidden');
@@ -582,18 +726,15 @@ function goToStep2() {
 }
 
 retakeBtn.addEventListener('click', () => {
-  selectedFile = null;
-  selectedMediaType = 'photo';
+  clearQueue();
   cameraInput.value = '';
   videoInput.value = '';
   galleryInput.value = '';
-  previewVideo.pause();
-  previewVideo.removeAttribute('src');
   goToStep1();
 });
 
 submitBtn.addEventListener('click', async () => {
-  if (!selectedFile) return;
+  if (mediaQueue.length === 0) return;
   hideError(step2Error);
   submitBtn.disabled = true;
   submitBtn.innerHTML = '<span class="spinner"></span>Gönderiliyor...';
@@ -602,31 +743,40 @@ submitBtn.addEventListener('click', async () => {
     const area = areaSelect.value;
     const responsible = responsibleSelect.value;
     const reason = reasonSelect.value;
-    const defaultExt = selectedMediaType === 'video' ? 'mp4' : 'jpg';
-    const ext = (selectedFile.name.split('.').pop() || defaultExt).toLowerCase();
-    const fileName = `${crypto.randomUUID()}.${ext}`;
+    const description = descriptionInput.value.trim() || null;
+    const submissionId = crypto.randomUUID();
 
-    const { error: uploadError } = await supabaseClient
-      .storage
-      .from('gemba-photos')
-      .upload(fileName, selectedFile, { contentType: selectedFile.type || (selectedMediaType === 'video' ? 'video/mp4' : 'image/jpeg') });
+    const rows = await Promise.all(mediaQueue.map(async (item) => {
+      const defaultExt = item.mediaType === 'video' ? 'mp4' : 'jpg';
+      const ext = (item.file.name.split('.').pop() || defaultExt).toLowerCase();
+      const fileName = `${crypto.randomUUID()}.${ext}`;
 
-    if (uploadError) throw uploadError;
+      const { error: uploadError } = await supabaseClient
+        .storage
+        .from('gemba-photos')
+        .upload(fileName, item.file, { contentType: item.file.type || (item.mediaType === 'video' ? 'video/mp4' : 'image/jpeg') });
 
-    const { data: urlData } = supabaseClient
-      .storage
-      .from('gemba-photos')
-      .getPublicUrl(fileName);
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabaseClient
+        .storage
+        .from('gemba-photos')
+        .getPublicUrl(fileName);
+
+      return {
+        area,
+        responsible,
+        reason,
+        description,
+        photo_url: urlData.publicUrl,
+        media_type: item.mediaType,
+        submission_id: submissionId
+      };
+    }));
 
     const { error: insertError } = await supabaseClient
       .from('gemba_findings')
-      .insert({
-        area: area,
-        responsible: responsible,
-        reason: reason,
-        photo_url: urlData.publicUrl,
-        media_type: selectedMediaType
-      });
+      .insert(rows);
 
     if (insertError) throw insertError;
 
@@ -645,16 +795,14 @@ function showSuccess() {
   successScreen.classList.remove('hidden');
 
   setTimeout(() => {
-    selectedFile = null;
-    selectedMediaType = 'photo';
+    clearQueue();
     cameraInput.value = '';
     videoInput.value = '';
     galleryInput.value = '';
-    previewVideo.pause();
-    previewVideo.removeAttribute('src');
     areaSelect.value = '';
     responsibleSelect.value = '';
     reasonSelect.value = '';
+    descriptionInput.value = '';
     loadOptions();
     goToStep1();
   }, 2500);
