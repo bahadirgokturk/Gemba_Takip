@@ -95,22 +95,23 @@ Bu üç liste, saha sayfasındaki (`gemba.html`) dropdown'ları otomatik olarak 
 gerekmez, admin panelini her açtığınızda otomatik hesaplanır.
 
 Silmenin kendisi ise Supabase'in **pg_cron** özelliğiyle sunucu tarafında, siz panele
-girmeseniz bile her gece çalışır. Anahtarınız bir Postgres tablosunda (`gemba_secrets`)
-saklanır; bu tabloda RLS açık ama hiçbir "policy" tanımlı değildir, yani ne saha sayfası
-(anon) ne de admin paneli (authenticated) API üzerinden bu tabloyu okuyabilir — sadece
-veritabanının kendi içinde çalışan zamanlanmış görev erişebilir. Kurulumu:
+girmeseniz bile her gece çalışır. Anahtarınız **Supabase Vault**'ta şifreli saklanır; hiçbir
+dosyada düz metin olarak durmaz, ne saha sayfası (anon) ne de admin paneli (authenticated)
+bunu API üzerinden okuyabilir. Kurulumu:
 
-1. Supabase panelinde **SQL Editor**'de `cleanup.sql` dosyasındaki **ADIM 0** bölümünü
-   çalıştırın (bu, kilitli `gemba_secrets` tablosunu oluşturur).
-2. **Project Settings > API Keys** sayfasından `sb_secret_...` ile başlayan **secret key**'inizi
+1. **Project Settings > API Keys** sayfasından `sb_secret_...` ile başlayan **secret key**'inizi
    kopyalayın.
-3. `cleanup.sql` içindeki **ADIM 1** yorumundaki komutu kopyalayıp, `BURAYA_...` kısmını
-   gerçek anahtarınızla değiştirerek SQL Editor'e **ayrıca** yapıştırıp çalıştırın (bu komutu
-   hiçbir dosyaya kaydetmeyin, sadece SQL Editor'e bir kere yapıştırın).
-4. `cleanup.sql`'in **ADIM 2** bölümünü (eklentiler + fonksiyon + zamanlama) çalıştırın.
+2. Supabase panelinde **SQL Editor**'de, `cleanup.sql` dosyasının **ADIM 0** yorumundaki
+   komutu kopyalayıp `BURAYA_...` kısmını gerçek anahtarınızla değiştirerek çalıştırın (bu
+   komutu hiçbir dosyaya kaydetmeyin, sadece SQL Editor'e bir kere yapıştırın).
+3. `cleanup.sql`'in **ADIM 1** bölümünü (eklentiler + fonksiyon + zamanlama) çalıştırın.
    Bu bölümde hiçbir gizli anahtar yoktur, GitHub'a güvenle yüklenebilir.
-5. Test etmek için SQL Editor'de `select gemba_cleanup_old_findings();` çalıştırın — hata
+4. Test etmek için SQL Editor'de `select gemba_cleanup_old_findings();` çalıştırın — hata
    almamalısınız (7 günden eski kaydınız yoksa sessizce biter, bu normaldir).
+
+Yanlışlıkla placeholder metni ("BURAYA_...") gerçek anahtar yerine kaydettiyseniz, tekrar
+`create_secret` çalıştırmak yerine (isim çakışması karışıklık yaratabilir), ilk komutun
+döndürdüğü id'yi kullanarak düzeltin: `select vault.update_secret('dönen-id', 'doğru-anahtar');`
 
 Bu adım opsiyoneldir — çalıştırmazsanız sistemin geri kalanı normal şekilde çalışmaya devam
 eder, sadece eski fotoğraflar otomatik silinmez.
