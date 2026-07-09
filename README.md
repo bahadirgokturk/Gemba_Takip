@@ -21,7 +21,7 @@ doğrudan yüklenebilir.
 1. Bölge seç
 2. Sorumlu kişi seç
 3. Uygunsuzluk nedeni seç
-4. Fotoğraf çek (kamera doğrudan açılır, galeri değil)
+4. Fotoğraf çek, video çek (en fazla 30 saniye) ya da galeriden mevcut bir fotoğraf/video yükle
 5. Önizlemeyi kontrol et, Gönder
 
 Not alanı yoktur — sistem bilinçli olarak bu kadar basit tutulmuştur.
