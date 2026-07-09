@@ -18,8 +18,9 @@ doğrudan yüklenebilir.
 
 1. Bölge seç
 2. Sorumlu kişi seç
-3. Fotoğraf çek (kamera doğrudan açılır, galeri değil)
-4. Önizlemeyi kontrol et, Gönder
+3. Uygunsuzluk nedeni seç
+4. Fotoğraf çek (kamera doğrudan açılır, galeri değil)
+5. Önizlemeyi kontrol et, Gönder
 
 Not alanı yoktur — sistem bilinçli olarak bu kadar basit tutulmuştur.
 
@@ -37,14 +38,14 @@ sayesinde çakışma olmaz.
 Seçtiğiniz Supabase projesinde **SQL Editor**'ü açın, `schema.sql` dosyasının tüm içeriğini
 yapıştırıp **Run** butonuna basın. Bu adım:
 
-- `gemba_findings`, `gemba_areas`, `gemba_responsibles` tablolarını oluşturur
+- `gemba_findings`, `gemba_areas`, `gemba_responsibles`, `gemba_reasons` tablolarını oluşturur
 - Row Level Security (RLS) politikalarını uygular: anon kullanıcılar sadece bulgu ekleyebilir,
-  bölge/sorumlu listelerini okuyabilir; admin (authenticated) her şeyi yapabilir
+  bölge/sorumlu/neden listelerini okuyabilir; admin (authenticated) her şeyi yapabilir
 - `gemba-photos` adında herkese açık okunabilir bir Storage bucket oluşturur
 
-> Daha önce eski (durum/not alanlı) şemayı bu projede çalıştırdıysanız, önce
-> `drop table if exists gemba_findings cascade;` ile eski tabloyu silip sonra `schema.sql`'i
-> çalıştırın.
+> `schema.sql` tamamen tekrar çalıştırılabilir (idempotent) şekilde yazılmıştır. Daha önce bu
+> dosyanın eski bir sürümünü çalıştırdıysanız (örn. "reason" kolonu eklenmeden önce), güncel
+> dosyayı baştan sona tekrar çalıştırmanız yeterlidir — mevcut verileriniz silinmez.
 
 ### 3. Admin kullanıcı oluşturun
 
@@ -70,15 +71,18 @@ const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
 yükleyin. PWA'nın çalışması için sitenin **HTTPS** üzerinden servis edilmesi gerekir (bu
 hosting'lerin hepsi varsayılan olarak HTTPS sağlar).
 
-### 6. Bölgeleri ve sorumlu kişileri ekleyin
+### 6. Bölge, sorumlu kişi ve uygunsuzluk nedeni listelerini doldurun
 
-`admin.html`'e admin hesabınızla giriş yapın:
+`admin.html`'e admin hesabınızla giriş yapın, **Listeler** sekmesine geçin. Üstteki üç
+seçenekten (Bölgeler / Sorumlu Kişiler / Uygunsuzluk Nedenleri) hangisini dolduracaksanız
+onu seçip ekleyin:
 
-- **Bölgeler** sekmesinden gemba turlarında gezilecek bölgeleri (örn. "Baskı Hattı 1",
-  "Depo", "Kalite Kontrol") ekleyin.
-- **Sorumlu Kişiler** sekmesinden uygunsuzluklardan sorumlu tutulacak kişileri ekleyin.
+- **Bölgeler:** gemba turlarında gezilecek bölgeler (örn. "Baskı Hattı 1", "Depo").
+- **Sorumlu Kişiler:** uygunsuzluklardan sorumlu tutulacak kişiler.
+- **Uygunsuzluk Nedenleri:** karşılaşılabilecek uygunsuzluk türleri (örn. "5S Standardına
+  Uygun Değil", "Güvenlik Ekipmanı Eksik").
 
-Bu iki liste, saha sayfasındaki (`gemba.html`) dropdown'ları otomatik olarak besler.
+Bu üç liste, saha sayfasındaki (`gemba.html`) dropdown'ları otomatik olarak besler.
 
 ## Sahada uygulama gibi kurulum (PWA)
 
@@ -93,16 +97,18 @@ imzalama gerektirmez, siteyi her güncellediğinizde otomatik olarak günceldir.
 
 ## Kullanım
 
-- **Saha ekibi:** Ana ekrana eklenen Gemba ikonuna dokunur. Bölge ve sorumlu kişi seçip
-  fotoğraf çeker, önizler, gönderir.
-- **Admin:** `admin.html`'e giriş yapıp gelen bulguları (fotoğraf, bölge, sorumlu kişi,
-  tarih) sırayla görüntüler; bölge veya sorumlu kişiye göre filtreler. Admin panelinde
-  başka hiçbir işlem (durum değiştirme, not ekleme vb.) yoktur.
+- **Saha ekibi:** Ana ekrana eklenen Gemba ikonuna dokunur. Bölge, sorumlu kişi ve
+  uygunsuzluk nedeni seçip fotoğraf çeker, önizler, gönderir.
+- **Admin:** `admin.html`'e giriş yapıp **Bulgular** sekmesinde gelen bulguları (fotoğraf,
+  bölge, sorumlu kişi, neden, tarih) sırayla görüntüler; bölge/sorumlu/nedene göre filtreler.
+  **Listeler** sekmesinden bölge, sorumlu kişi ve uygunsuzluk nedeni listelerini yönetir.
+  Admin panelinde başka hiçbir işlem (durum değiştirme, not ekleme vb.) yoktur.
 
 ## Notlar
 
 - Mail/SMTP bildirimi yoktur.
-- QR kod üretimi/okuma yoktur; bölge ve sorumlu kişi seçimi düz dropdown'lar ile yapılır.
+- QR kod üretimi/okuma yoktur; bölge, sorumlu kişi ve uygunsuzluk nedeni seçimi düz
+  dropdown'lar ile yapılır.
 - `admin.html` içinde hiçbir hardcoded şifre/PIN bulunmaz; yetkilendirme tamamen Supabase
   Auth ve RLS politikaları üzerinden sağlanır.
 - Admin panelinin tek görevi gelen kayıtları görüntülemektir; açık/kapalı durum takibi veya

@@ -324,6 +324,13 @@
         </select>
       </div>
 
+      <div>
+        <label for="reasonSelect">Uygunsuzluk Nedeni</label>
+        <select id="reasonSelect">
+          <option value="">Uygunsuzluk nedeni seçin...</option>
+        </select>
+      </div>
+
       <div class="error" id="step1Error"></div>
 
       <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden">
@@ -333,7 +340,7 @@
         </span>
         Fotoğraf Çek
       </button>
-      <p class="hint">Önce bölge ve sorumlu kişiyi seçin, ardından fotoğraf çekin.</p>
+      <p class="hint">Önce bölge, sorumlu kişi ve nedeni seçin, ardından fotoğraf çekin.</p>
     </section>
 
     <!-- STEP 2 -->
@@ -369,6 +376,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const areaSelect = document.getElementById('areaSelect');
 const responsibleSelect = document.getElementById('responsibleSelect');
+const reasonSelect = document.getElementById('reasonSelect');
 const step1 = document.getElementById('step1');
 const step2 = document.getElementById('step2');
 const successScreen = document.getElementById('successScreen');
@@ -384,31 +392,30 @@ const step2Error = document.getElementById('step2Error');
 
 let selectedFile = null;
 
-async function loadOptions() {
-  const [areasRes, responsiblesRes] = await Promise.all([
-    supabaseClient.from('gemba_areas').select('name').order('name', { ascending: true }),
-    supabaseClient.from('gemba_responsibles').select('name').order('name', { ascending: true })
-  ]);
+const OPTION_LISTS = [
+  { table: 'gemba_areas', select: areaSelect, placeholder: 'Bölge seçin...' },
+  { table: 'gemba_responsibles', select: responsibleSelect, placeholder: 'Sorumlu kişi seçin...' },
+  { table: 'gemba_reasons', select: reasonSelect, placeholder: 'Uygunsuzluk nedeni seçin...' }
+];
 
-  if (areasRes.error || responsiblesRes.error) {
+async function loadOptions() {
+  const results = await Promise.all(
+    OPTION_LISTS.map(l => supabaseClient.from(l.table).select('name').order('name', { ascending: true }))
+  );
+
+  if (results.some(r => r.error)) {
     showError(step1Error, 'Liste yüklenemedi. Sayfayı yenileyin.');
     return;
   }
 
-  areaSelect.innerHTML = '<option value="">Bölge seçin...</option>';
-  (areasRes.data || []).forEach(a => {
-    const opt = document.createElement('option');
-    opt.value = a.name;
-    opt.textContent = a.name;
-    areaSelect.appendChild(opt);
-  });
-
-  responsibleSelect.innerHTML = '<option value="">Sorumlu kişi seçin...</option>';
-  (responsiblesRes.data || []).forEach(r => {
-    const opt = document.createElement('option');
-    opt.value = r.name;
-    opt.textContent = r.name;
-    responsibleSelect.appendChild(opt);
+  OPTION_LISTS.forEach((l, i) => {
+    l.select.innerHTML = `<option value="">${l.placeholder}</option>`;
+    (results[i].data || []).forEach(row => {
+      const opt = document.createElement('option');
+      opt.value = row.name;
+      opt.textContent = row.name;
+      l.select.appendChild(opt);
+    });
   });
 }
 
@@ -430,6 +437,10 @@ takePhotoBtn.addEventListener('click', () => {
   }
   if (!responsibleSelect.value) {
     showError(step1Error, 'Lütfen sorumlu kişiyi seçin.');
+    return;
+  }
+  if (!reasonSelect.value) {
+    showError(step1Error, 'Lütfen uygunsuzluk nedenini seçin.');
     return;
   }
   cameraInput.click();
@@ -476,6 +487,7 @@ submitBtn.addEventListener('click', async () => {
   try {
     const area = areaSelect.value;
     const responsible = responsibleSelect.value;
+    const reason = reasonSelect.value;
     const ext = (selectedFile.name.split('.').pop() || 'jpg').toLowerCase();
     const fileName = `${crypto.randomUUID()}.${ext}`;
 
@@ -496,6 +508,7 @@ submitBtn.addEventListener('click', async () => {
       .insert({
         area: area,
         responsible: responsible,
+        reason: reason,
         photo_url: urlData.publicUrl
       });
 
@@ -520,6 +533,7 @@ function showSuccess() {
     cameraInput.value = '';
     areaSelect.value = '';
     responsibleSelect.value = '';
+    reasonSelect.value = '';
     loadOptions();
     goToStep1();
   }, 2500);

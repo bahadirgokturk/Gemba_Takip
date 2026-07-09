@@ -121,7 +121,7 @@
     border-radius:var(--radius-sm);
     border:none;
     cursor:pointer;
-    transition:transform .12s ease, background-color .15s ease, box-shadow .15s ease, border-color .15s ease, opacity .15s ease;
+    transition:transform .12s ease, background-color .15s ease, box-shadow .15s ease, border-color .15s ease, opacity .15s ease, color .15s ease;
   }
   .btn-primary{background:var(--accent);color:#fff;width:100%;box-shadow:var(--shadow-btn);}
   .btn-primary:hover{background:var(--accent-dark);}
@@ -232,15 +232,15 @@
     gap:6px;
   }
   .finding-area{font-weight:600;font-size:14px;letter-spacing:-0.005em;}
-  .finding-responsible{
+  .finding-meta{
     font-size:13px;
     color:var(--text-soft);
     display:flex;
     align-items:center;
     gap:6px;
   }
-  .finding-responsible svg{flex:none;color:var(--text-faint);}
-  .finding-responsible strong{color:var(--text);font-weight:600;}
+  .finding-meta svg{flex:none;color:var(--text-faint);}
+  .finding-meta strong{color:var(--text);font-weight:600;}
   .finding-date{
     font-size:12px;
     color:var(--text-faint);
@@ -260,7 +260,28 @@
   }
   .empty-state svg{color:var(--text-faint);}
 
-  /* ---------- Areas / Responsibles ---------- */
+  /* ---------- Listeler ---------- */
+  .segmented{
+    display:inline-flex;
+    gap:2px;
+    padding:3px;
+    background:var(--accent-soft);
+    border-radius:var(--radius-sm);
+    margin-bottom:24px;
+  }
+  .segmented-btn{
+    background:none;
+    color:var(--text-soft);
+    font-size:13px;
+    padding:8px 14px;
+    border-radius:calc(var(--radius-sm) - 3px);
+  }
+  .segmented-btn:hover{color:var(--text);}
+  .segmented-btn.active{
+    background:var(--surface);
+    color:var(--accent);
+    box-shadow:0 1px 2px rgba(30,37,48,0.08);
+  }
   .simple-form{
     display:flex;
     gap:10px;
@@ -361,8 +382,7 @@
 
   <div class="tabs">
     <button class="tab-btn active" id="tabFindingsBtn">Bulgular</button>
-    <button class="tab-btn" id="tabAreasBtn">Bölgeler</button>
-    <button class="tab-btn" id="tabResponsiblesBtn">Sorumlu Kişiler</button>
+    <button class="tab-btn" id="tabListsBtn">Listeler</button>
   </div>
 
   <!-- FINDINGS TAB -->
@@ -374,27 +394,26 @@
       <select id="filterResponsible">
         <option value="">Tüm sorumlular</option>
       </select>
+      <select id="filterReason">
+        <option value="">Tüm nedenler</option>
+      </select>
     </div>
     <div class="findings-grid" id="findingsGrid"></div>
     <div class="empty-state hidden" id="findingsEmpty">Kayıt bulunamadı.</div>
   </div>
 
-  <!-- AREAS TAB -->
-  <div id="tabAreas" class="hidden">
-    <form class="simple-form" id="areaForm">
-      <input type="text" id="newAreaInput" placeholder="Yeni bölge adı">
+  <!-- LISTS TAB -->
+  <div id="tabLists" class="hidden">
+    <div class="segmented" id="listTypeSwitch">
+      <button class="segmented-btn active" data-type="areas">Bölgeler</button>
+      <button class="segmented-btn" data-type="responsibles">Sorumlu Kişiler</button>
+      <button class="segmented-btn" data-type="reasons">Uygunsuzluk Nedenleri</button>
+    </div>
+    <form class="simple-form" id="listForm">
+      <input type="text" id="listInput" placeholder="Yeni bölge adı">
       <button class="btn-primary" type="submit" style="width:auto;">Ekle</button>
     </form>
-    <div class="simple-list" id="areaList"></div>
-  </div>
-
-  <!-- RESPONSIBLES TAB -->
-  <div id="tabResponsibles" class="hidden">
-    <form class="simple-form" id="responsibleForm">
-      <input type="text" id="newResponsibleInput" placeholder="Yeni sorumlu kişi adı">
-      <button class="btn-primary" type="submit" style="width:auto;">Ekle</button>
-    </form>
-    <div class="simple-list" id="responsibleList"></div>
+    <div class="simple-list" id="listRows"></div>
   </div>
 </div>
 
@@ -419,24 +438,20 @@ const passwordInput = document.getElementById('passwordInput');
 const loginError = document.getElementById('loginError');
 
 const tabFindingsBtn = document.getElementById('tabFindingsBtn');
-const tabAreasBtn = document.getElementById('tabAreasBtn');
-const tabResponsiblesBtn = document.getElementById('tabResponsiblesBtn');
+const tabListsBtn = document.getElementById('tabListsBtn');
 const tabFindings = document.getElementById('tabFindings');
-const tabAreas = document.getElementById('tabAreas');
-const tabResponsibles = document.getElementById('tabResponsibles');
+const tabLists = document.getElementById('tabLists');
 
 const filterArea = document.getElementById('filterArea');
 const filterResponsible = document.getElementById('filterResponsible');
+const filterReason = document.getElementById('filterReason');
 const findingsGrid = document.getElementById('findingsGrid');
 const findingsEmpty = document.getElementById('findingsEmpty');
 
-const areaForm = document.getElementById('areaForm');
-const newAreaInput = document.getElementById('newAreaInput');
-const areaList = document.getElementById('areaList');
-
-const responsibleForm = document.getElementById('responsibleForm');
-const newResponsibleInput = document.getElementById('newResponsibleInput');
-const responsibleList = document.getElementById('responsibleList');
+const listTypeSwitch = document.getElementById('listTypeSwitch');
+const listForm = document.getElementById('listForm');
+const listInput = document.getElementById('listInput');
+const listRows = document.getElementById('listRows');
 
 const lightbox = document.getElementById('lightbox');
 const lightboxImg = document.getElementById('lightboxImg');
@@ -473,8 +488,8 @@ function showLogin() {
 function showApp() {
   loginWrap.classList.add('hidden');
   appWrap.classList.remove('hidden');
-  loadAreas();
-  loadResponsibles();
+  loadAllFilters();
+  renderListEditor();
   loadFindings();
 }
 
@@ -505,15 +520,14 @@ logoutBtn.addEventListener('click', async () => {
 
 // ---------- TABS ----------
 function setActiveTab(btn, panel) {
-  [tabFindingsBtn, tabAreasBtn, tabResponsiblesBtn].forEach(b => b.classList.remove('active'));
-  [tabFindings, tabAreas, tabResponsibles].forEach(p => p.classList.add('hidden'));
+  [tabFindingsBtn, tabListsBtn].forEach(b => b.classList.remove('active'));
+  [tabFindings, tabLists].forEach(p => p.classList.add('hidden'));
   btn.classList.add('active');
   panel.classList.remove('hidden');
 }
 
 tabFindingsBtn.addEventListener('click', () => setActiveTab(tabFindingsBtn, tabFindings));
-tabAreasBtn.addEventListener('click', () => setActiveTab(tabAreasBtn, tabAreas));
-tabResponsiblesBtn.addEventListener('click', () => setActiveTab(tabResponsiblesBtn, tabResponsibles));
+tabListsBtn.addEventListener('click', () => setActiveTab(tabListsBtn, tabLists));
 
 // ---------- FINDINGS ----------
 async function loadFindings() {
@@ -524,6 +538,7 @@ async function loadFindings() {
 
   if (filterArea.value) query = query.eq('area', filterArea.value);
   if (filterResponsible.value) query = query.eq('responsible', filterResponsible.value);
+  if (filterReason.value) query = query.eq('reason', filterReason.value);
 
   const { data, error } = await query;
 
@@ -562,7 +577,8 @@ function renderFindings(findings) {
       <img class="finding-thumb" src="${f.photo_url}" alt="Bulgu fotoğrafı">
       <div class="finding-body">
         <div class="finding-area">${escapeHtml(f.area)}</div>
-        <div class="finding-responsible"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> <strong>${escapeHtml(f.responsible)}</strong></div>
+        <div class="finding-meta"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> <strong>${escapeHtml(f.responsible)}</strong></div>
+        <div class="finding-meta"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41 11 3.83A2 2 0 0 0 9.59 3.24L4 3a1 1 0 0 0-1 1l.24 5.59a2 2 0 0 0 .59 1.41l9.58 9.58a2 2 0 0 0 2.83 0l4.35-4.35a2 2 0 0 0 0-2.82Z"></path><circle cx="8.5" cy="8.5" r="1.5"></circle></svg> ${escapeHtml(f.reason)}</div>
         <div class="finding-date">${date}</div>
       </div>
     `;
@@ -578,116 +594,99 @@ function renderFindings(findings) {
 
 filterArea.addEventListener('change', loadFindings);
 filterResponsible.addEventListener('change', loadFindings);
+filterReason.addEventListener('change', loadFindings);
 
 lightbox.addEventListener('click', () => {
   lightbox.classList.remove('open');
 });
 
-// ---------- AREAS ----------
-async function loadAreas() {
+// ---------- LISTELER (Bölgeler / Sorumlu Kişiler / Uygunsuzluk Nedenleri) ----------
+const LIST_CONFIG = {
+  areas: { table: 'gemba_areas', filterSelect: filterArea, filterAllLabel: 'Tüm bölgeler', placeholder: 'Yeni bölge adı' },
+  responsibles: { table: 'gemba_responsibles', filterSelect: filterResponsible, filterAllLabel: 'Tüm sorumlular', placeholder: 'Yeni sorumlu kişi adı' },
+  reasons: { table: 'gemba_reasons', filterSelect: filterReason, filterAllLabel: 'Tüm nedenler', placeholder: 'Yeni uygunsuzluk nedeni' }
+};
+let currentListType = 'areas';
+
+async function loadAllFilters() {
+  await Promise.all(Object.keys(LIST_CONFIG).map(refreshFilterOptions));
+}
+
+async function refreshFilterOptions(type) {
+  const cfg = LIST_CONFIG[type];
   const { data, error } = await supabaseClient
-    .from('gemba_areas')
+    .from(cfg.table)
     .select('*')
     .order('name', { ascending: true });
 
   if (error) return;
 
-  filterArea.innerHTML = '<option value="">Tüm bölgeler</option>';
-  areaList.innerHTML = '';
-
-  (data || []).forEach(a => {
-    const opt = document.createElement('option');
-    opt.value = a.name;
-    opt.textContent = a.name;
-    filterArea.appendChild(opt);
-
-    const row = document.createElement('div');
-    row.className = 'simple-row';
-    row.innerHTML = `
-      <span>${escapeHtml(a.name)}</span>
-      <button class="btn-danger" data-id="${a.id}">Sil</button>
-    `;
-    row.querySelector('button').addEventListener('click', () => deleteArea(a.id));
-    areaList.appendChild(row);
-  });
+  cfg.filterSelect.innerHTML = `<option value="">${cfg.filterAllLabel}</option>` +
+    (data || []).map(row => `<option value="${escapeHtml(row.name)}">${escapeHtml(row.name)}</option>`).join('');
 }
 
-areaForm.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const name = newAreaInput.value.trim();
-  if (!name) return;
+async function renderListEditor() {
+  const cfg = LIST_CONFIG[currentListType];
+  listInput.placeholder = cfg.placeholder;
 
-  const { error } = await supabaseClient
-    .from('gemba_areas')
-    .insert({ name });
-
-  if (!error) {
-    newAreaInput.value = '';
-    loadAreas();
-  }
-});
-
-async function deleteArea(id) {
-  const { error } = await supabaseClient
-    .from('gemba_areas')
-    .delete()
-    .eq('id', id);
-
-  if (!error) loadAreas();
-}
-
-// ---------- RESPONSIBLES ----------
-async function loadResponsibles() {
   const { data, error } = await supabaseClient
-    .from('gemba_responsibles')
+    .from(cfg.table)
     .select('*')
     .order('name', { ascending: true });
 
+  listRows.innerHTML = '';
   if (error) return;
 
-  filterResponsible.innerHTML = '<option value="">Tüm sorumlular</option>';
-  responsibleList.innerHTML = '';
-
-  (data || []).forEach(r => {
-    const opt = document.createElement('option');
-    opt.value = r.name;
-    opt.textContent = r.name;
-    filterResponsible.appendChild(opt);
-
-    const row = document.createElement('div');
-    row.className = 'simple-row';
-    row.innerHTML = `
-      <span>${escapeHtml(r.name)}</span>
-      <button class="btn-danger" data-id="${r.id}">Sil</button>
+  (data || []).forEach(row => {
+    const el = document.createElement('div');
+    el.className = 'simple-row';
+    el.innerHTML = `
+      <span>${escapeHtml(row.name)}</span>
+      <button class="btn-danger" data-id="${row.id}">Sil</button>
     `;
-    row.querySelector('button').addEventListener('click', () => deleteResponsible(r.id));
-    responsibleList.appendChild(row);
+    el.querySelector('button').addEventListener('click', () => deleteListItem(row.id));
+    listRows.appendChild(el);
   });
 }
 
-responsibleForm.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const name = newResponsibleInput.value.trim();
-  if (!name) return;
-
+async function deleteListItem(id) {
+  const cfg = LIST_CONFIG[currentListType];
   const { error } = await supabaseClient
-    .from('gemba_responsibles')
-    .insert({ name });
-
-  if (!error) {
-    newResponsibleInput.value = '';
-    loadResponsibles();
-  }
-});
-
-async function deleteResponsible(id) {
-  const { error } = await supabaseClient
-    .from('gemba_responsibles')
+    .from(cfg.table)
     .delete()
     .eq('id', id);
 
-  if (!error) loadResponsibles();
+  if (!error) {
+    renderListEditor();
+    refreshFilterOptions(currentListType);
+  }
 }
+
+listTypeSwitch.addEventListener('click', (e) => {
+  const btn = e.target.closest('.segmented-btn');
+  if (!btn) return;
+  currentListType = btn.dataset.type;
+  [...listTypeSwitch.children].forEach(b => b.classList.toggle('active', b === btn));
+  listInput.value = '';
+  renderListEditor();
+});
+
+listForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const name = listInput.value.trim();
+  if (!name) return;
+
+  const cfg = LIST_CONFIG[currentListType];
+  const { error } = await supabaseClient
+    .from(cfg.table)
+    .insert({ name });
+
+  if (!error) {
+    listInput.value = '';
+    renderListEditor();
+    refreshFilterOptions(currentListType);
+  }
+});
 
 checkSession();
 </script>
