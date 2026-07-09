@@ -1,39 +1,20 @@
-const CACHE_NAME = 'gemba-shell-v2';
-const SHELL_FILES = [
-  './gemba.html',
-  './manifest.json'
-];
+// Bu servis çalışanı kasıtlı olarak hiçbir şeyi önbelleğe almaz.
+// Tek işlevi PWA kurulabilirliğini sağlamaktır (telefonda "Ana ekrana ekle").
+// Önceki sürümlerde uygulanan önbellekleme, güncellemelerin telefonlarda
+// gecikmeli/tutarsız görünmesine yol açtığı için tamamen kaldırıldı — artık
+// her istek doğrudan ağa gider, tarayıcının normal davranışıyla aynıdır.
 
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(SHELL_FILES))
-  );
+const OLD_CACHE_NAMES = ['gemba-shell-v1', 'gemba-shell-v2'];
+
+self.addEventListener('install', () => {
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((names) =>
-      Promise.all(names.filter((n) => n !== CACHE_NAME).map((n) => caches.delete(n)))
+      Promise.all(names.filter((n) => OLD_CACHE_NAMES.includes(n)).map((n) => caches.delete(n)))
     )
   );
   self.clients.claim();
-});
-
-// Uygulama kabuğu (HTML/manifest) için önce ağ, sadece internet yoksa önbellek
-// kullanılır — böylece güncellemeler her açılışta anında yansır. Supabase
-// istekleri zaten bu dosyanın kapsamı dışında, her zaman doğrudan ağdan gider.
-self.addEventListener('fetch', (event) => {
-  const url = new URL(event.request.url);
-  if (url.origin !== self.location.origin) return;
-
-  event.respondWith(
-    fetch(event.request)
-      .then((response) => {
-        const clone = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-        return response;
-      })
-      .catch(() => caches.match(event.request))
-  );
 });
