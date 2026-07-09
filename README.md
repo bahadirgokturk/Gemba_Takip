@@ -44,6 +44,8 @@ yapıştırıp **Run** butonuna basın. Bu adım:
 - Row Level Security (RLS) politikalarını uygular: anon kullanıcılar sadece bulgu ekleyebilir,
   bölge/sorumlu/neden listelerini okuyabilir; admin (authenticated) her şeyi yapabilir
 - `gemba-photos` adında herkese açık okunabilir bir Storage bucket oluşturur
+- Realtime'ı açar: saha sayfasından yeni bir bulgu gönderildiğinde, admin panelinde açık olan
+  **Bulgular** sekmesi sayfa yenilemeden anında güncellenir
 
 > `schema.sql` tamamen tekrar çalıştırılabilir (idempotent) şekilde yazılmıştır. Daha önce bu
 > dosyanın eski bir sürümünü çalıştırdıysanız (örn. "reason" kolonu eklenmeden önce), güncel

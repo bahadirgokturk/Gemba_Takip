@@ -499,12 +499,25 @@ function showLogin() {
   appWrap.classList.add('hidden');
 }
 
+let findingsChannel = null;
+
 function showApp() {
   loginWrap.classList.add('hidden');
   appWrap.classList.remove('hidden');
   loadAllFilters();
   renderListEditor();
   loadFindings();
+  subscribeToFindings();
+}
+
+function subscribeToFindings() {
+  if (findingsChannel) return;
+  findingsChannel = supabaseClient
+    .channel('gemba-findings-live')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'gemba_findings' }, () => {
+      loadFindings();
+    })
+    .subscribe();
 }
 
 loginBtn.addEventListener('click', async () => {
@@ -528,6 +541,10 @@ loginBtn.addEventListener('click', async () => {
 });
 
 logoutBtn.addEventListener('click', async () => {
+  if (findingsChannel) {
+    supabaseClient.removeChannel(findingsChannel);
+    findingsChannel = null;
+  }
   await supabaseClient.auth.signOut();
   showLogin();
 });

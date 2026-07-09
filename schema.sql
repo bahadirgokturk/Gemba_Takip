@@ -124,3 +124,16 @@ on storage.objects for all
 to authenticated
 using (bucket_id = 'gemba-photos')
 with check (bucket_id = 'gemba-photos');
+
+-- 7) REALTIME
+-- Admin paneli yeni bulguları sayfa yenilemeden anında görsün diye
+-- gemba_findings tablosunu Supabase Realtime yayınına ekler.
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and tablename = 'gemba_findings'
+  ) then
+    alter publication supabase_realtime add table gemba_findings;
+  end if;
+end $$;
