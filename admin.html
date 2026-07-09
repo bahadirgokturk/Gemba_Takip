@@ -514,10 +514,13 @@ function subscribeToFindings() {
   if (findingsChannel) return;
   findingsChannel = supabaseClient
     .channel('gemba-findings-live')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'gemba_findings' }, () => {
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'gemba_findings' }, (payload) => {
+      console.log('[gemba realtime] değişiklik alındı:', payload.eventType, payload);
       loadFindings();
     })
-    .subscribe();
+    .subscribe((status, err) => {
+      console.log('[gemba realtime] abonelik durumu:', status, err || '');
+    });
 }
 
 loginBtn.addEventListener('click', async () => {
