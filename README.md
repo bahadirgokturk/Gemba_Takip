@@ -135,8 +135,10 @@ imzalama gerektirmez, siteyi her güncellediğinizde otomatik olarak günceldir.
   uygunsuzluk nedeni seçip fotoğraf çeker, önizler, gönderir.
 - **Admin:** `admin.html`'e giriş yapıp **Bulgular** sekmesinde gelen bulguları (fotoğraf,
   bölge, sorumlu kişi, neden, tarih) sırayla görüntüler; bölge/sorumlu/nedene göre filtreler.
+  Yeni bir bulgu geldiğinde liste sayfa yenilemeden anında güncellenir (Realtime). Her
+  fotoğrafın üzerindeki küçük kalem ikonuyla bölge/sorumlu/neden düzenlenebilir, çöp kutusu
+  ikonuyla (onay istenerek) hem fotoğraf hem kayıt kalıcı olarak silinebilir.
   **Listeler** sekmesinden bölge, sorumlu kişi ve uygunsuzluk nedeni listelerini yönetir.
-  Admin panelinde başka hiçbir işlem (durum değiştirme, not ekleme vb.) yoktur.
 
 ## Notlar
 
@@ -145,5 +147,5 @@ imzalama gerektirmez, siteyi her güncellediğinizde otomatik olarak günceldir.
   dropdown'lar ile yapılır.
 - `admin.html` içinde hiçbir hardcoded şifre/PIN bulunmaz; yetkilendirme tamamen Supabase
   Auth ve RLS politikaları üzerinden sağlanır.
-- Admin panelinin tek görevi gelen kayıtları görüntülemektir; açık/kapalı durum takibi veya
-  kapatma işlemi kasıtlı olarak yoktur.
+- Bulgu durumu (açık/kapalı) takibi kasıtlı olarak yoktur; bunun yerine düzenleme ve silme
+  imkanı vardır.
