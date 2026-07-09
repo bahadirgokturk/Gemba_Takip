@@ -1,39 +1,28 @@
 -- GEMBA — 7 günden eski bulguları otomatik silme (Supabase Cron)
 -- Bu dosyanın kendisinde HİÇBİR gizli anahtar yoktur ve GitHub'a güvenle
 -- yüklenebilir. Servis anahtarı, aşağıdaki ADIM 0'da SQL Editor'e SİZİN
--- YAPIŞTIRACAĞINIZ ayrı bir komutla gemba_secrets tablosuna kaydedilir.
--- Bu tablo RLS ile tamamen kilitlidir: hiçbir "policy" tanımlanmadığı için
--- ne anon (herkes) ne de authenticated (admin) API üzerinden bu tabloyu
--- okuyabilir/yazabilir — sadece veritabanının kendi içinde çalışan,
--- aşağıdaki security definer fonksiyon erişebilir.
+-- YAPIŞTIRACAĞINIZ ayrı bir komutla, şifreli olarak Supabase Vault'a
+-- kaydedilir — hiçbir dosyada düz metin olarak durmaz.
 
 -- ============================================================
--- ADIM 0 — Önce bu bölümü SQL Editor'de çalıştırın (tabloyu oluşturur)
+-- ADIM 0 — SADECE BİR KERE, SQL Editor'e AYRI çalıştırın
+-- (Bu komutu bu dosyaya değil, sadece SQL Editor'e yapıştırın)
 -- ============================================================
-
-create table if not exists gemba_secrets (
-  key text primary key,
-  value text not null
-);
-
-alter table gemba_secrets enable row level security;
--- Kasıtlı olarak hiçbir policy eklenmiyor: RLS açık + policy yok = anon/authenticated
--- rolleri için tablo tamamen erişilemez. Sadece bu dosyanın fonksiyonu (postgres
--- rolüyle, RLS'i by-pass ederek) okuyabilir.
-
--- ============================================================
--- ADIM 1 — Anahtarınızı SADECE BİR KERE kaydedin
--- (Bu satırı bu dosyaya değil, sadece SQL Editor'e ayrı yapıştırıp çalıştırın)
--- ============================================================
--- insert into gemba_secrets (key, value)
--- values ('gemba_service_key', 'BURAYA_SUPABASE_SECRET_KEYİNİZİ_YAPIŞTIRIN')
--- on conflict (key) do update set value = excluded.value;
+-- select vault.create_secret(
+--   'BURAYA_SUPABASE_SECRET_KEYİNİZİ_YAPIŞTIRIN',
+--   'gemba_service_key'
+-- );
 --
 -- Secret key'i Project Settings > API Keys sayfasından alabilirsiniz
 -- (sb_secret_... ile başlayan anahtar).
+--
+-- Yanlış değer girdiyseniz, tekrar create_secret çalıştırıp yeni bir kayıt
+-- oluşturmak yerine (isim çakışması karışıklık yaratabilir), dönen id'yi
+-- kullanarak düzeltin:
+-- select vault.update_secret('BURAYA_DÖNEN_ID', 'YENİ_DOĞRU_DEĞER');
 
 -- ============================================================
--- ADIM 2 — Bu dosyanın geri kalanını SQL Editor'de çalıştırın
+-- ADIM 1 — Bu dosyanın geri kalanını SQL Editor'de çalıştırın
 -- ============================================================
 
 create extension if not exists pg_cron with schema pg_catalog;
@@ -43,7 +32,7 @@ create or replace function gemba_cleanup_old_findings()
 returns void
 language plpgsql
 security definer
-set search_path = public, extensions
+set search_path = public, extensions, vault
 as $$
 declare
   rec record;
@@ -51,13 +40,14 @@ declare
   service_key text;
   project_url text := 'https://xeettwmxooxtwxzevitk.supabase.co';
 begin
-  select value into service_key
-  from gemba_secrets
-  where key = 'gemba_service_key'
+  select decrypted_secret into service_key
+  from vault.decrypted_secrets
+  where name = 'gemba_service_key'
+  order by created_at desc
   limit 1;
 
   if service_key is null then
-    raise notice 'gemba_service_key bulunamadı (ADIM 1''i çalıştırdınız mı?), temizlik atlandı.';
+    raise notice 'gemba_service_key Vault''da bulunamadı, temizlik atlandı.';
     return;
   end if;
 
@@ -94,7 +84,7 @@ select cron.schedule(
 );
 
 -- ============================================================
--- ADIM 3 — Test edin
+-- ADIM 2 — Test edin
 -- ============================================================
 -- Zamanlamayı beklemeden manuel olarak bir kere çalıştırıp
 -- hata almadığınızı doğrulayın:
